@@ -27,7 +27,6 @@ def _formated_weekdays(locale):
     return formated_days
 
 class HairByNingAppointmentController(AppointmentController):
-    reference_date = None
 
     @route(['/hbn/appointment', '/hbn/appointment/page/<int:page>'],
            type='json', auth="public", website=True, sitemap=True)
@@ -48,6 +47,7 @@ class HairByNingAppointmentController(AppointmentController):
             data = {
                 'id': appointment.id,
                 'name': appointment.name,
+                'max_capacity': appointment.resource_count
             }
             result[appointment.location].append(data)
 
@@ -68,8 +68,6 @@ class HairByNingAppointmentController(AppointmentController):
         :param resource_selected_id: id of the selected resource, from upstream or coming back from an error.
         """
 
-        if kwargs.get('date'):
-            self.reference_date = datetime.strptime(kwargs.get('date'), "%Y-%m-%d")
 
         kwargs['domain'] = self._appointments_base_domain(
             filter_appointment_type_ids=kwargs.get('filter_appointment_type_ids'),
@@ -91,7 +89,17 @@ class HairByNingAppointmentController(AppointmentController):
             raise NotFound()
 
         page_values = self._prepare_appointment_type_page_values(appointment_type, staff_user_id, resource_selected_id, **kwargs)
-        return self._get_appointment_type_time_slots(appointment_type, page_values, state, **kwargs)
+        time_slots = self._get_appointment_type_time_slots(appointment_type, page_values, state, **kwargs)
+        slots = []
+        for week in time_slots["slots"][0]["weeks"]:
+            for day in week:
+                slots.append(day)
+
+        appointment = {"appointment_type_id": appointment_type.id, "name": appointment_type.name, "location": appointment_type.location, 
+            "appointment_tz": appointment_type.appointment_tz, "assign_method": appointment_type.assign_method, 
+            "asked_capacity": page_values["asked_capacity"], "slots": slots
+        }
+        return appointment
 
     def _get_appointment_type_time_slots(self, appointment_type, page_values, state=False, **kwargs):
         """
@@ -125,7 +133,7 @@ class HairByNingAppointmentController(AppointmentController):
             **slots_values,
         }
 
-    def _get_slots_from_filter(self, appointment_type, filter_records, asked_capacity=1):
+    def _get_slots_from_filter(self, appointment_type, filter_records, asked_capacity=1, **kwargs):
         """
         Compute the slots and the first month that has available slots from the given filter.
 
@@ -136,12 +144,18 @@ class HairByNingAppointmentController(AppointmentController):
             - slots: the available slots
             - month_first_available: the first month that has available slots or False if there is none
         """
+
+        if kwargs.get('date'):
+            reference_date = datetime.strptime(kwargs.get('date'), "%Y-%m-%d")
+        else:
+            reference_date = None
+
         slots = appointment_type._get_appointment_slots(
             request.session['timezone'],
             filter_users=filter_records if appointment_type.schedule_based_on == "users" else None,
             filter_resources=filter_records if appointment_type.schedule_based_on == "resources" else None,
             asked_capacity=asked_capacity,
-            reference_date=self.reference_date,
+            reference_date=reference_date,
         )
         return {
             'slots': slots,
