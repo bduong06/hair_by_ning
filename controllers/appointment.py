@@ -4,9 +4,11 @@ from babel.dates import format_datetime, format_date, format_time
 from odoo.http import request, route
 from odoo.addons.appointment.controllers.appointment import AppointmentController
 from werkzeug.exceptions import Forbidden, NotFound
+from urllib.parse import unquote_plus
 from odoo.tools.mail import is_html_empty
 from odoo.tools.misc import babel_locale_parse, get_lang
 from datetime import datetime, date
+from odoo.tools import DEFAULT_SERVER_DATETIME_FORMAT as dtf, email_normalize
 
 import json
 from collections import defaultdict
@@ -91,9 +93,11 @@ class HairByNingAppointmentController(AppointmentController):
         page_values = self._prepare_appointment_type_page_values(appointment_type, staff_user_id, resource_selected_id, **kwargs)
         time_slots = self._get_appointment_type_time_slots(appointment_type, page_values, state, **kwargs)
         slots = []
-        for week in time_slots["slots"][0]["weeks"]:
-            for day in week:
-                slots.append(day)
+        for slot in time_slots["slots"]:
+            for week in slot["weeks"]:
+                for day in week:
+                    if(len(day['slots']) > 0):
+                        slots.append(day)
 
         appointment = {"appointment_type_id": appointment_type.id, "name": appointment_type.name, "location": appointment_type.location, 
             "appointment_tz": appointment_type.appointment_tz, "assign_method": appointment_type.assign_method, 
@@ -160,4 +164,83 @@ class HairByNingAppointmentController(AppointmentController):
         return {
             'slots': slots,
             'month_first_available': next((month['id'] for month in slots if month['has_availabilities']), False),
+        }
+
+    @route(['/hbn/appointment/<int:appointment_type_id>/info'],
+            type='json', auth="public", website=True, sitemap=False)
+    def appointment_type_form(self, appointment_type_id, **kwargs):
+        """
+        Render the form to get information about the user for the appointment
+
+        :param appointment_type_id: the appointment type id related
+        :param date_time: the slot datetime selected for the appointment
+        :param duration: the duration of the slot
+        :param staff_user_id: the user selected for the appointment
+        :param resource_selected_id: the resource selected for the appointment
+        :param available_resource_ids: the resources info we want to propagate that are linked to the slot time
+        :param asked_capacity: the asked capacity for the appointment
+        :param filter_appointment_type_ids: see ``Appointment.appointments()`` route
+        """
+        date_time = unquote_plus(kwargs.get('date_time'))
+        duration = unquote_plus(kwargs.get('duration'))
+        staff_user_id = None if kwargs.get('staff_user_id') is None else unquote_plus(kwargs.get('staff_user_id'))
+        resource_selected_id = None if kwargs.get('resource_selected_id') is None else unquote_plus(kwargs.get('resource_selected_id'))
+        available_resource_ids = None if kwargs.get('available_resource_ids') is None else unquote_plus(kwargs.get('available_resource_ids'))
+        asked_capacity = 1 if kwargs.get('asked_capacity') is None else unquote_plus(kwargs.get('asked_capacity'))
+        kwargs = {}
+
+        domain = self._appointments_base_domain(
+            filter_appointment_type_ids=kwargs.get('filter_appointment_type_ids'),
+            search=kwargs.get('search'),
+            invite_token=kwargs.get('invite_token')
+        )
+        available_appointments = self._fetch_and_check_private_appointment_types(
+            kwargs.get('filter_appointment_type_ids'),
+            kwargs.get('filter_staff_user_ids'),
+            kwargs.get('filter_resource_ids'),
+            kwargs.get('invite_token'),
+            domain=domain,
+        )
+        appointment_type = available_appointments.filtered(lambda appt: appt.id == int(appointment_type_id))
+
+        if not appointment_type:
+            raise NotFound()
+
+        if not self._check_appointment_is_valid_slot(appointment_type, staff_user_id, resource_selected_id, available_resource_ids, date_time, duration, asked_capacity, **kwargs):
+            raise NotFound()
+
+        partner = self._get_customer_partner()
+        partner_data = partner.read(fields=['name', 'phone', 'email'])[0] if partner else {}
+        date_time = unquote_plus(date_time)
+        date_time_object = datetime.strptime(date_time, dtf)
+        day_name = format_datetime(date_time_object, 'EEE', locale=get_lang(request.env).code)
+        date_formated = format_date(date_time_object.date(), locale=get_lang(request.env).code)
+        time_locale = format_time(date_time_object.time(), locale=get_lang(request.env).code, format='short')
+        resource = request.env['appointment.resource'].sudo().browse(int(resource_selected_id)) if resource_selected_id else request.env['appointment.resource']
+        staff_user = request.env['res.users'].browse(int(staff_user_id)) if staff_user_id else request.env['res.users']
+        users_possible = self._get_possible_staff_users(
+            appointment_type,
+            json.loads(unquote_plus(kwargs.get('filter_staff_user_ids') or '[]')),
+        )
+        resources_possible = self._get_possible_resources(
+            appointment_type,
+            json.loads(unquote_plus(kwargs.get('filter_resource_ids') or '[]')),
+        )
+        return { 'partner_data': partner_data,
+            'appointment_type': appointment_type,
+            'available_appointments': available_appointments,
+            'main_object': appointment_type,
+            'datetime': date_time,
+            'date_locale': f'{day_name} {date_formated}',
+            'time_locale': time_locale,
+            'datetime_str': date_time,
+            'duration_str': duration,
+            'duration': float(duration),
+            'staff_user': staff_user,
+            'resource': resource,
+            'asked_capacity': int(asked_capacity),
+            'timezone': request.session.get('timezone') or appointment_type.appointment_tz,  # bw compatibility
+            'users_possible': users_possible,
+            'resources_possible': resources_possible,
+            'available_resource_ids': available_resource_ids,
         }
