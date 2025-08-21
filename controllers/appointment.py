@@ -1,7 +1,9 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
  
+import pytz
 from babel.dates import format_datetime, format_date, format_time
-from odoo.http import request, route
+from odoo import http, Command
+from odoo.http import request
 from odoo.addons.appointment.controllers.appointment import AppointmentController
 from werkzeug.exceptions import Forbidden, NotFound
 from urllib.parse import unquote_plus
@@ -30,7 +32,7 @@ def _formated_weekdays(locale):
 
 class HairByNingAppointmentController(AppointmentController):
 
-    @route(['/hbn/appointment', '/hbn/appointment/page/<int:page>'],
+    @http.route(['/hbn/appointment', '/hbn/appointment/page/<int:page>'],
            type='json', auth="public", website=True, sitemap=True)
     def appointment_type_list(self, page=1, **kwargs):
         """
@@ -53,9 +55,9 @@ class HairByNingAppointmentController(AppointmentController):
             }
             result[appointment.location].append(data)
 
-        return result
+        return {'appointment_types' : result }
 
-    @route(['/hbn/appointment/<int:appointment_type_id>'],
+    @http.route(['/hbn/appointment/<int:appointment_type_id>'],
            type='json', auth="public", website=True, sitemap=True)
     def appointment_type_time_slots(self, appointment_type_id, state=False, staff_user_id=False, resource_selected_id=False, **kwargs):
         """
@@ -103,7 +105,7 @@ class HairByNingAppointmentController(AppointmentController):
             "appointment_tz": appointment_type.appointment_tz, "assign_method": appointment_type.assign_method, 
             "asked_capacity": page_values["asked_capacity"], "slots": slots
         }
-        return appointment
+        return {'appointment': appointment}
 
     def _get_appointment_type_time_slots(self, appointment_type, page_values, state=False, **kwargs):
         """
@@ -166,7 +168,7 @@ class HairByNingAppointmentController(AppointmentController):
             'month_first_available': next((month['id'] for month in slots if month['has_availabilities']), False),
         }
 
-    @route(['/hbn/appointment/<int:appointment_type_id>/info'],
+    @http.route(['/hbn/appointment/<int:appointment_type_id>/info'],
             type='json', auth="public", website=True, sitemap=False)
     def appointment_type_form(self, appointment_type_id, **kwargs):
         """
@@ -227,9 +229,7 @@ class HairByNingAppointmentController(AppointmentController):
             json.loads(unquote_plus(kwargs.get('filter_resource_ids') or '[]')),
         )
         return { 'partner_data': partner_data,
-            'appointment_type': appointment_type,
-            'available_appointments': available_appointments,
-            'main_object': appointment_type,
+            'appointment_type_id': appointment_type.id,
             'datetime': date_time,
             'date_locale': f'{day_name} {date_formated}',
             'time_locale': time_locale,
@@ -243,4 +243,183 @@ class HairByNingAppointmentController(AppointmentController):
             'users_possible': users_possible,
             'resources_possible': resources_possible,
             'available_resource_ids': available_resource_ids,
+            'csrf_token': request.csrf_token(),
         }
+
+    @http.route(['/hbn/appointment/<int:appointment_type_id>/submit'],
+                type='json', auth="public", website=True)
+    def appointment_form_submit(self, appointment_type_id, **kwargs):
+        """
+        Create the event for the appointment and redirect on the validation page with a summary of the appointment.
+
+        :param appointment_type_id: the appointment type id related
+        :param datetime_str: the string representing the datetime
+        :param duration_str: the string representing the duration
+        :param name: the name of the user sets in the form
+        :param phone: the phone of the user sets in the form
+        :param email: the email of the user sets in the form
+        :param staff_user_id: the user selected for the appointment
+        :param available_resource_ids: the resources ids available for the appointment
+        :param asked_capacity: asked capacity for the appointment
+        :param str guest_emails: optional line-separated guest emails. It will
+          fetch or create partners to add them as event attendees;
+        """
+        domain = self._appointments_base_domain(
+            filter_appointment_type_ids=kwargs.get('filter_appointment_type_ids'),
+            search=kwargs.get('search'),
+            invite_token=kwargs.get('invite_token')
+        )
+
+        available_appointments = self._fetch_and_check_private_appointment_types(
+            kwargs.get('filter_appointment_type_ids'),
+            kwargs.get('filter_staff_user_ids'),
+            kwargs.get('filter_resource_ids'),
+            kwargs.get('invite_token'),
+            domain=domain,
+        )
+        appointment_type = available_appointments.filtered(lambda appt: appt.id == int(appointment_type_id))
+
+        if not appointment_type:
+            raise NotFound()
+        timezone = request.session.get('timezone') or appointment_type.appointment_tz
+        tz_session = pytz.timezone(timezone)
+        datetime_str = unquote_plus(datetime_str)
+        date_start = tz_session.localize(fields.Datetime.from_string(datetime_str)).astimezone(pytz.utc).replace(tzinfo=None)
+        duration = float(duration_str)
+        date_end = date_start + relativedelta(hours=duration)
+        invite_token = kwargs.get('invite_token')
+
+        staff_user = request.env['res.users']
+        resources = request.env['appointment.resource']
+        resource_ids = None
+        asked_capacity = int(asked_capacity)
+        resources_remaining_capacity = None
+        if appointment_type.schedule_based_on == 'resources':
+            resource_ids = json.loads(unquote_plus(available_resource_ids))
+            # Check if there is still enough capacity (in case someone else booked with a resource in the meantime)
+            resources = request.env['appointment.resource'].sudo().browse(resource_ids).exists()
+            if any(resource not in appointment_type.resource_ids for resource in resources):
+                raise NotFound()
+            resources_remaining_capacity = appointment_type._get_resources_remaining_capacity(resources, date_start, date_end, with_linked_resources=False)
+            if resources_remaining_capacity['total_remaining_capacity'] < asked_capacity:
+                return request.redirect('/appointment/%s?%s' % (appointment_type.id, keep_query('*', state='failed-resource')))
+        else:
+            # check availability of the selected user again (in case someone else booked while the client was entering the form)
+            staff_user = request.env['res.users'].sudo().search([('id', '=', int(staff_user_id))])
+            if staff_user not in appointment_type.staff_user_ids:
+                raise NotFound()
+            if staff_user and not staff_user.partner_id.calendar_verify_availability(date_start, date_end):
+                return request.redirect('/appointment/%s?%s' % (appointment_type.id, keep_query('*', state='failed-staff-user')))
+
+        guests = None
+        if appointment_type.allow_guests:
+            if guest_emails_str:
+                guests = request.env['calendar.event'].sudo()._find_or_create_partners(guest_emails_str)
+
+        customer = self._get_customer_partner()
+
+        # considering phone and email are mandatory
+        new_customer = not (customer.email) or not (customer.phone)
+        if not new_customer and customer.email != email and customer.email_normalized != email_normalize(email):
+            new_customer = True
+        if not new_customer and not customer.phone:
+            new_customer = True
+        if not new_customer:
+            customer_phone_fmt = customer._phone_format(fname="phone")
+            input_country = self._get_customer_country()
+            input_phone_fmt = phone_validation.phone_format(phone, input_country.code, input_country.phone_code, force_format="E164", raise_exception=False)
+            new_customer = customer.phone != phone and customer_phone_fmt != input_phone_fmt
+
+        if new_customer:
+            customer = customer.create({
+                'name': name,
+                'phone': customer._phone_format(number=phone, country=self._get_customer_country()) or phone,
+                'email': email,
+                'lang': request.lang.code,
+            })
+
+        # partner_inputs dictionary structures all answer inputs received on the appointment submission: key is question id, value
+        # is answer id (as string) for choice questions, text input for text questions, array of ids for multiple choice questions.
+        partner_inputs = {}
+        appointment_question_ids = appointment_type.question_ids.ids
+        for k_key, k_value in [item for item in kwargs.items() if item[1]]:
+            question_id_str = re.match(r"\bquestion_([0-9]+)\b", k_key)
+            if question_id_str and int(question_id_str.group(1)) in appointment_question_ids:
+                partner_inputs[int(question_id_str.group(1))] = k_value
+                continue
+            checkbox_ids_str = re.match(r"\bquestion_([0-9]+)_answer_([0-9]+)\b", k_key)
+            if checkbox_ids_str:
+                question_id, answer_id = [int(checkbox_ids_str.group(1)), int(checkbox_ids_str.group(2))]
+                if question_id in appointment_question_ids:
+                    partner_inputs[question_id] = partner_inputs.get(question_id, []) + [answer_id]
+
+        # The answer inputs will be created in _prepare_calendar_event_values from the values in answer_input_values
+        answer_input_values = []
+        base_answer_input_vals = {
+            'appointment_type_id': appointment_type.id,
+            'partner_id': customer.id,
+        }
+
+        for question in appointment_type.question_ids.filtered(lambda question: question.id in partner_inputs.keys()):
+            if question.question_type == 'checkbox':
+                answers = question.answer_ids.filtered(lambda answer: answer.id in partner_inputs[question.id])
+                answer_input_values.extend([
+                    dict(base_answer_input_vals, question_id=question.id, value_answer_id=answer.id) for answer in answers
+                ])
+            elif question.question_type in ['select', 'radio']:
+                answer_input_values.append(
+                    dict(base_answer_input_vals, question_id=question.id, value_answer_id=int(partner_inputs[question.id]))
+                )
+            elif question.question_type in ['char', 'text']:
+                answer_input_values.append(
+                    dict(base_answer_input_vals, question_id=question.id, value_text_box=partner_inputs[question.id].strip())
+                )
+
+        booking_line_values = []
+        if appointment_type.schedule_based_on == 'resources':
+            capacity_to_assign = asked_capacity
+            for resource in resources:
+                resource_remaining_capacity = resources_remaining_capacity.get(resource)
+                new_capacity_reserved = min(resource_remaining_capacity, capacity_to_assign, resource.capacity)
+                capacity_to_assign -= new_capacity_reserved
+                booking_line_values.append({
+                    'appointment_resource_id': resource.id,
+                    'capacity_reserved': new_capacity_reserved,
+                    'capacity_used': new_capacity_reserved if resource.shareable and appointment_type.resource_manage_capacity else resource.capacity,
+                })
+
+        if invite_token:
+            appointment_invite = request.env['appointment.invite'].sudo().search([('access_token', '=', invite_token)])
+        else:
+            appointment_invite = request.env['appointment.invite']
+
+        return self._handle_appointment_form_submission(
+            appointment_type, date_start, date_end, duration, answer_input_values, name,
+            customer, appointment_invite, guests, staff_user, asked_capacity, booking_line_values
+        )
+
+    def _handle_appointment_form_submission(
+        self, appointment_type,
+        date_start, date_end, duration,  # appointment boundaries
+        answer_input_values, name, customer, appointment_invite, guests=None,  # customer info
+        staff_user=None, asked_capacity=1, booking_line_values=None  # appointment staff / resources
+    ):
+        """ This method takes the output of the processing of appointment's form submission and
+            creates the event corresponding to those values. Meant for overrides to set values
+            needed to set a specific redirection.
+
+            :returns: a dict of useful values used in the redirection to next step
+        """
+        event = request.env['calendar.event'].with_context(
+            mail_notify_author=True,
+            mail_create_nolog=True,
+            mail_create_nosubscribe=True,
+            allowed_company_ids=self._get_allowed_companies(staff_user or appointment_type.create_uid).ids,
+        ).sudo().create({
+            'appointment_answer_input_ids': [Command.create(vals) for vals in answer_input_values],
+            **appointment_type._prepare_calendar_event_values(
+                asked_capacity, booking_line_values, duration,
+                appointment_invite, guests, name, customer, staff_user, date_start, date_end
+            )
+        })
+        return request.redirect(f"/calendar/view/{event.access_token}?partner_id={customer.id}&{keep_query('*', state='new')}")
