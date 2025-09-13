@@ -2,13 +2,15 @@
  
 import pytz
 from babel.dates import format_datetime, format_date, format_time
-from odoo import http, Command
+from dateutil.relativedelta import relativedelta
+from odoo import http, Command, fields
 from odoo.http import request
 from odoo.addons.appointment.controllers.appointment import AppointmentController
 from werkzeug.exceptions import Forbidden, NotFound
 from urllib.parse import unquote_plus
 from odoo.tools.mail import is_html_empty
 from odoo.tools.misc import babel_locale_parse, get_lang
+from odoo.addons.base.models.ir_qweb import keep_query
 from datetime import datetime, date
 from odoo.tools import DEFAULT_SERVER_DATETIME_FORMAT as dtf, email_normalize
 
@@ -54,12 +56,15 @@ class HairByNingAppointmentController(AppointmentController):
                 'max_capacity': appointment.resource_count
             }
             result[appointment.location].append(data)
+        
 
-        return {'appointment_types' : result }
+        return {'appointment_types' : result,
+                'csrf_token' : request.csrf_token()
+                }
 
-    @http.route(['/hbn/appointment/<int:appointment_type_id>'],
+    @http.route(['/hbn/appointment/appointment_type'],
            type='json', auth="public", website=True, sitemap=True)
-    def appointment_type_time_slots(self, appointment_type_id, state=False, staff_user_id=False, resource_selected_id=False, **kwargs):
+    def appointment_type_time_slots(self, **kwargs):
         """
         This route renders the appointment page: It first computes a dict of values useful for all potential
         views and to choose between them in _get_appointment_type_page_view, that renders the chosen one.
@@ -72,6 +77,10 @@ class HairByNingAppointmentController(AppointmentController):
         :param resource_selected_id: id of the selected resource, from upstream or coming back from an error.
         """
 
+        appointment_type_id = unquote_plus(kwargs.get('appointment_type_id'))
+        staff_user_id = kwargs.get('staff_user_id')
+        resource_selected_id = kwargs.get('resource_selected_id')
+        state = kwargs.get('state')
 
         kwargs['domain'] = self._appointments_base_domain(
             filter_appointment_type_ids=kwargs.get('filter_appointment_type_ids'),
@@ -168,9 +177,9 @@ class HairByNingAppointmentController(AppointmentController):
             'month_first_available': next((month['id'] for month in slots if month['has_availabilities']), False),
         }
 
-    @http.route(['/hbn/appointment/<int:appointment_type_id>/info'],
+    @http.route(['/hbn/appointment/info'],
             type='json', auth="public", website=True, sitemap=False)
-    def appointment_type_form(self, appointment_type_id, **kwargs):
+    def appointment_type_form(self, **kwargs):
         """
         Render the form to get information about the user for the appointment
 
@@ -183,6 +192,7 @@ class HairByNingAppointmentController(AppointmentController):
         :param asked_capacity: the asked capacity for the appointment
         :param filter_appointment_type_ids: see ``Appointment.appointments()`` route
         """
+        appointment_type_id = unquote_plus(kwargs.get('appointment_type_id'))
         date_time = unquote_plus(kwargs.get('date_time'))
         duration = unquote_plus(kwargs.get('duration'))
         staff_user_id = None if kwargs.get('staff_user_id') is None else unquote_plus(kwargs.get('staff_user_id'))
@@ -230,25 +240,21 @@ class HairByNingAppointmentController(AppointmentController):
         )
         return { 'partner_data': partner_data,
             'appointment_type_id': appointment_type.id,
+            'location': appointment_type.location,
             'datetime': date_time,
             'date_locale': f'{day_name} {date_formated}',
             'time_locale': time_locale,
             'datetime_str': date_time,
             'duration_str': duration,
             'duration': float(duration),
-            'staff_user': staff_user,
-            'resource': resource,
             'asked_capacity': int(asked_capacity),
             'timezone': request.session.get('timezone') or appointment_type.appointment_tz,  # bw compatibility
-            'users_possible': users_possible,
-            'resources_possible': resources_possible,
             'available_resource_ids': available_resource_ids,
-            'csrf_token': request.csrf_token(),
         }
 
-    @http.route(['/hbn/appointment/<int:appointment_type_id>/submit'],
+    @http.route(['/hbn/appointment/submit'],
                 type='json', auth="public", website=True)
-    def appointment_form_submit(self, appointment_type_id, **kwargs):
+    def json_appointment_form_submit(self, **kwargs):
         """
         Create the event for the appointment and redirect on the validation page with a summary of the appointment.
 
@@ -264,6 +270,16 @@ class HairByNingAppointmentController(AppointmentController):
         :param str guest_emails: optional line-separated guest emails. It will
           fetch or create partners to add them as event attendees;
         """
+        appointment_type_id = kwargs.get('appointment_type_id')
+        datetime_str = kwargs.get('datetime_str')
+        duration_str = kwargs.get('duration_str')
+        name = kwargs.get('name')
+        phone = kwargs.get('phone')
+        email = kwargs.get('email')
+        staff_user_id = kwargs.get('staff_user_id')
+        available_resource_ids= kwargs.get('available_resource_ids')
+        asked_capacity = kwargs.get('asked_capacity')
+        guest_emails_str= kwargs.get('guest_emails_str')
         domain = self._appointments_base_domain(
             filter_appointment_type_ids=kwargs.get('filter_appointment_type_ids'),
             search=kwargs.get('search'),
@@ -305,7 +321,7 @@ class HairByNingAppointmentController(AppointmentController):
                 return request.redirect('/appointment/%s?%s' % (appointment_type.id, keep_query('*', state='failed-resource')))
         else:
             # check availability of the selected user again (in case someone else booked while the client was entering the form)
-            staff_user = request.env['res.users'].sudo().search([('id', '=', int(staff_user_id))])
+            staff_user = request.env['res.users'].sudo().search([('id', '=', int(kwargs.get('staff_user_id')))])
             if staff_user not in appointment_type.staff_user_ids:
                 raise NotFound()
             if staff_user and not staff_user.partner_id.calendar_verify_availability(date_start, date_end):
@@ -422,4 +438,4 @@ class HairByNingAppointmentController(AppointmentController):
                 appointment_invite, guests, name, customer, staff_user, date_start, date_end
             )
         })
-        return request.redirect(f"/calendar/view/{event.access_token}?partner_id={customer.id}&{keep_query('*', state='new')}")
+        return {event: json.dumps(event)}
