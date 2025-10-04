@@ -136,10 +136,10 @@ class OAuthController(OAuthController):
 
             credential = {'login': login, 'password': key, 'type': 'password'}
             auth_info = request.session.authenticate(dbname, credential)
+            session_info = request.env['ir.http'].session_info()
 
-            _logger.error("/hbn/auth_oauth/signin", dbname)
             return {
-#                'session_info': request.env['ir.http'].session_info(),
+                'session_info': session_info,
                 'auth_info': auth_info
             }
         except AttributeError:  # TODO juc master: useless since ensure_db()
