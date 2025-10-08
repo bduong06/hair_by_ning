@@ -139,25 +139,24 @@ class OAuthController(OAuthController):
             session_info = request.env['ir.http'].session_info()
 
             return {
-                'session_info': session_info,
                 'auth_info': auth_info
             }
         except AttributeError:  # TODO juc master: useless since ensure_db()
             # auth_signup is not installed
             _logger.error("auth_signup not installed on database %s: oauth sign up cancelled.", dbname)
-            url = "/web/login?oauth_error=1"
+            error = "auth_signup not installed"
         except AccessDenied:
             # oauth credentials not valid, user could be on a temporary session
             _logger.info('OAuth2: access denied, redirect to main page in case a valid session exists, without setting cookies')
-            url = "/web/login?oauth_error=3"
+            error =  "OAuth2: access denied"
         except Exception:
             # signup error
             _logger.exception("Exception during request handling")
-            url = "/web/login?oauth_error=2"
+            error = "Exception during request handling"
 
-        redirect = request.redirect(url, 303)
-        redirect.autocorrect_location_header = False
-        return redirect
+        return {
+            'error': error
+        }
 
 
 """
