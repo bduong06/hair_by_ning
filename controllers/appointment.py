@@ -5,6 +5,7 @@ from babel.dates import format_datetime, format_date, format_time
 from dateutil.relativedelta import relativedelta
 from odoo import http, Command, fields
 from odoo.http import request
+import logging
 from odoo.addons.appointment.controllers.appointment import AppointmentController
 from werkzeug.exceptions import Forbidden, NotFound
 from urllib.parse import unquote_plus
@@ -12,10 +13,13 @@ from odoo.tools.mail import is_html_empty
 from odoo.tools.misc import babel_locale_parse, get_lang
 from odoo.addons.base.models.ir_qweb import keep_query
 from datetime import datetime, date
+from odoo.addons.phone_validation.tools import phone_validation
 from odoo.tools import DEFAULT_SERVER_DATETIME_FORMAT as dtf, email_normalize
 
 import json
 from collections import defaultdict
+
+_logger = logging.getLogger(__name__)
 
 def _formated_weekdays(locale):
     """ Return the weekdays' name for the current locale
@@ -77,7 +81,7 @@ class HairByNingAppointmentController(AppointmentController):
         :param resource_selected_id: id of the selected resource, from upstream or coming back from an error.
         """
 
-        appointment_type_id = unquote_plus(kwargs.get('appointment_type_id'))
+        appointment_type_id = kwargs.get('appointment_type_id')
         staff_user_id = kwargs.get('staff_user_id')
         resource_selected_id = kwargs.get('resource_selected_id')
         state = kwargs.get('state')
