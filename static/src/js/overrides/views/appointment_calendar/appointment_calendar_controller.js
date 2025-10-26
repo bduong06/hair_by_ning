@@ -15,13 +15,16 @@ import { useRef, useState, useSubEnv, onWillStart } from "@odoo/owl";
 import { Dropdown } from "@web/core/dropdown/dropdown";
 import { user } from "@web/core/user";
 import { CustomAppointmentFormViewDialog } from "@appointment/views/custom_appointment_form_dialog/custom_appointment_form_dialog";
-
 const { DateTime } = luxon;
+
+patch(AttendeeCalendarController, {
+    components: { ...AttendeeCalendarController.components, Dropdown },
+});
 
 patch(AttendeeCalendarController.prototype, {
     setup() {
         super.setup(...arguments);
-        this.dialogService = useService("dialog");
+        this.actionService = useService('action');
 /*        this.popover = usePopover(Tooltip, { position: "bottom" });
         this.copyLinkRef = useRef("copyLinkRef");
         this.orm = useService("orm");
@@ -45,6 +48,28 @@ patch(AttendeeCalendarController.prototype, {
         });*/
     },
 
+/*    createRecord(record) {
+        if (!this.model.canCreate) {
+            return;
+        }
+        const currentAction = this.actionService.currentController;
+        if(currentAction.displayName === 'Resource Bookings'){
+
+        }
+        return this.editRecordInCreation(record);
+    },*/
+    createRecord(record) {
+        if (!this.model.canCreate) {
+            return;
+        }
+        const currentAction = this.actionService.currentController;
+        if(currentAction.displayName === 'Resource Bookings'){
+            const context = this._getContext(record.start);
+            this.openDialog({ context });
+        } else {
+            super.createRecord(record);
+        }
+    },
     /**
      * @override
      * When creating a new booking using the "New" button, round the start datetime to the next
@@ -53,16 +78,14 @@ patch(AttendeeCalendarController.prototype, {
      * The stop datetime will be updated in the default_get method on python side to match the appointment type duration.
     */
     onClickAddButton() {
-        super.onClickAddButton();
-/*        const focusDate = this.model.meta.date;
-        const now = DateTime.now();
-        const start =
-            now.minute > 30
-                ? focusDate.set({ hour: now.hour + 1, minute: 0, second: 0 })
-                : focusDate.set({ hour: now.hour, minute: 30, second: 0 });
-        const stop = start.plus({ hour: 1 });
-        const context = this.model.getDialogContext({ start, stop, withDefault: true });
-        this.openDialog({...context, 'booking_gantt_create_record': true});*/
+        const currentAction = this.actionService.currentController;
+        if(currentAction.displayName === 'Resource Bookings') {
+            const focusDate = DateTime.now();
+            const context = this._getContext(focusDate);
+            this.openDialog({ context });
+        } else {
+            super.onClickAddButton();
+        }
     },
 
     /**
@@ -80,19 +103,19 @@ patch(AttendeeCalendarController.prototype, {
         if (canDelete && props.resId) {
             removeRecord = () => {
                 return new Promise((resolve) => {
-                    this.dialogService.add(ConfirmationDialog, {
+                    this.displayDialog(ConfirmationDialog, {
                         body: _t("Are you sure to delete this record?"),
                         confirm: async () => {
                             await this.orm.unlink(resModel, [props.resId]);
                             resolve();
                         },
                         cancel: () => {},
-                    });
+                    }); 
                 });
             };
         }
 
-        this.closeDialog = this.dialogService.add(
+        this.closeDialog = this.displayDialog(
             FormViewDialog,
             {
                 title,
@@ -108,11 +131,24 @@ patch(AttendeeCalendarController.prototype, {
                 ...options,
                 onClose: () => {
                     this.closeDialog = null;
-                    this.model.fetchData();
+                    this.model.load();
                 },
             }
         );
     },
+    _getContext(startDate){
+        const context = this.props.context;
+        const start =
+            startDate.minute > 30
+                ? startDate.set({ hour: startDate.hour + 1, minute: 0, second: 0 })
+                : startDate.set({ hour: startDate.hour, minute: 30, second: 0 });
+        const stop = start.plus({ hour: 1 });
+        context.start = serializeDateTime(start);
+        context.stop = serializeDateTime(stop);
+        context.default_start = serializeDateTime(start);
+        context.default_stop = serializeDateTime(stop);
+        return context;
+    }
 /*    async _createCustomAppointmentType() {
         const customAppointment = await rpc(
             "/appointment/appointment_type/create_custom",
