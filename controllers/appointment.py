@@ -1,6 +1,8 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
  
+import json
 import pytz
+import re
 from babel.dates import format_datetime, format_date, format_time
 from dateutil.relativedelta import relativedelta
 from odoo import http, Command, fields
@@ -16,7 +18,6 @@ from datetime import datetime, date
 from odoo.addons.phone_validation.tools import phone_validation
 from odoo.tools import DEFAULT_SERVER_DATETIME_FORMAT as dtf, email_normalize
 
-import json
 from collections import defaultdict
 
 _logger = logging.getLogger(__name__)
@@ -280,7 +281,6 @@ class HairByNingAppointmentController(AppointmentController):
         name = kwargs.get('name')
         phone = kwargs.get('phone')
         email = kwargs.get('email')
-        staff_user_id = kwargs.get('staff_user_id')
         available_resource_ids= kwargs.get('available_resource_ids')
         asked_capacity = kwargs.get('asked_capacity')
         guest_emails_str= kwargs.get('guest_emails_str')
@@ -442,4 +442,4 @@ class HairByNingAppointmentController(AppointmentController):
                 appointment_invite, guests, name, customer, staff_user, date_start, date_end
             )
         })
-        return {event: json.dumps(event)}
+        return {'status': 200}
