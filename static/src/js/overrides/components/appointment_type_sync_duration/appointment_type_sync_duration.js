@@ -1,10 +1,11 @@
 import { onWillStart } from "@odoo/owl";
 import { useRecordObserver } from "@web/model/relational_model/utils";
-import { AppointmentTypeSyncDuration } from "@appointment/components/appointment_type_sync_duration/appointment_type_sync_duration";
-import { patch } from "@web/core/utils/patch";
+import { Many2OneField, many2OneField } from "@web/views/fields/many2one/many2one_field";
+import { registry } from "@web/core/registry";
 
 
-patch(AppointmentTypeSyncDuration.prototype, {
+export class HBNAppointmentTypeSyncDuration extends Many2OneField {
+
     setup() {
         super.setup();
         this.appointmentTypeId = this.props.record.data.appointment_type_id[0];
@@ -19,7 +20,8 @@ patch(AppointmentTypeSyncDuration.prototype, {
                     this.isDefaultDuration = true;
                 } else {
                     this.isDefaultDuration = true;
-                    this.props.record.data.duration = appointmentDuration?.[0].appointment_duration;
+//                    this.props.record.data.duration = appointmentDuration?.[0].appointment_duration;
+                    this.props.record.update({'duration': appointmentDuration[0].appointment_duration});
                 }
             }
         });
@@ -38,5 +40,9 @@ patch(AppointmentTypeSyncDuration.prototype, {
             }
         });
     }
-});
+};
 
+registry.category("fields").add("hbn_appointment_type_sync_duration", {
+    ...many2OneField,
+    component: HBNAppointmentTypeSyncDuration,
+});

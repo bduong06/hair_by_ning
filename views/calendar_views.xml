@@ -1,5 +1,15 @@
 <?xml version="1.0"?>
   <odoo>
+    <record id="calendar_event_view_form_gantt_booking_inherit" model="ir.ui.view">
+        <field name="name">calendar.event.view.form.gantt.booking.inherit</field>
+        <field name="model">calendar.event</field>
+        <field name="inherit_id" ref="appointment.calendar_event_view_form_gantt_booking"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='appointment_type_id']" position="replace">
+                <field name="appointment_type_id" options="{'no_create': True}" widget="hbn_appointment_type_sync_duration"/>
+            </xpath>
+        </field>
+    </record>
     <record id="calendar_event_view_form_booking" model="ir.ui.view">
         <field name="name">calendar.event.view.form.booking</field>
         <field name="model">calendar.event</field>
@@ -23,7 +33,7 @@
                     <group>
                         <group>
                             <field name="appointment_status" string="Status" invisible="not appointment_type_id" required="appointment_type_id"/>
-                            <field name="appointment_type_id" options="{'no_create': True}" widget="appointment_type_sync_duration"/>
+                            <field name="appointment_type_id" options="{'no_create': True}" widget="hbn_appointment_type_sync_duration"/>
                             <label for="start" string="Date"/>
                             <div class="o_row">
                                 <field name="start"/>

@@ -117,6 +117,7 @@ class OAuthController(OAuthController):
         provider = state['p']
         ensure_db(db=dbname)
         request.update_context(**clean_context(state.get('c', {})))
+        _logger.debug("OAuthController: start")
 
         try:
 
@@ -136,7 +137,6 @@ class OAuthController(OAuthController):
 
             credential = {'login': login, 'password': key, 'type': 'password'}
             auth_info = request.session.authenticate(dbname, credential)
-            session_info = request.env['ir.http'].session_info()
 
             return {
                 'auth_info': auth_info
