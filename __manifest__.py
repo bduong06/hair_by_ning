@@ -9,11 +9,15 @@
     'description': """
 Allow clients to Schedule Appointments through the Portal
     """,
-    'depends': ['base', 'calendar', 'phone_validation', 'portal', 'resource', 'web_gantt', 'appointment', 'mail'],
+    'depends': ['base', 'calendar', 'web', 'portal', 'resource', 'web_gantt', 'appointment', 'mail'],
     'installable': True,
     'assets': {
         'web.assets_backend': [
             'hair_by_ning/static/src/**/*',
+            ('remove', 'hair_by_ning/static/src/views/gantt/**'),
+        ],
+        'web.assets_backend_lazy': [
+            'hair_by_ning/static/src/views/gantt/**',
         ],
     },
     'data': [
