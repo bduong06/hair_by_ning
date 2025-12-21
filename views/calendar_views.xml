@@ -89,4 +89,15 @@
           </xpath>
         </field>
     </record>
+    <record id="calendar_event_view_gantt_booking_resource_inherit" model="ir.ui.view">
+        <field name="name">calendar.event.view.gantt.booking.resource.inherit</field>
+        <field name="model">calendar.event</field>
+        <field name="inherit_id" ref="appointment.calendar_event_view_gantt_booking_resource"/>
+        <field name="arch" type="xml">
+          <xpath expr="//gantt" position="attributes">
+            <attribute name="slot_min_time">11:00</attribute>
+            <attribute name="slot_max_time">22:00</attribute>
+          </xpath>
+        </field>
+    </record>
   </odoo>
