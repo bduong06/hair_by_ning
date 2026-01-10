@@ -413,12 +413,12 @@ class HairByNingAppointmentController(AppointmentController):
         else:
             appointment_invite = request.env['appointment.invite']
 
-        return self._handle_appointment_form_submission(
+        return self._json_handle_appointment_form_submission(
             appointment_type, date_start, date_end, duration, answer_input_values, name,
             customer, appointment_invite, guests, staff_user, asked_capacity, booking_line_values
         )
 
-    def _handle_appointment_form_submission(
+    def _json_handle_appointment_form_submission(
         self, appointment_type,
         date_start, date_end, duration,  # appointment boundaries
         answer_input_values, name, customer, appointment_invite, guests=None,  # customer info
