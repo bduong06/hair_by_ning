@@ -9,7 +9,8 @@
     'description': """
 Allow clients to Schedule Appointments through the Portal
     """,
-    'depends': ['base', 'calendar', 'web', 'portal', 'resource', 'web_gantt', 'appointment', 'mail'],
+    'depends': ['base', 'calendar', 'web', 'resource', 'web_gantt', 'appointment', 'mail','account_payment', 
+    'sale', 'sale_loyalty','account', 'point_of_sale'],
     'installable': True,
     'assets': {
         'web.assets_backend': [
@@ -22,6 +23,9 @@ Allow clients to Schedule Appointments through the Portal
     },
     'data': [
         'views/calendar_views.xml',
+        'views/res_partner_views.xml',
+        'views/sale_order_views.xml',
+        'views/account_move_views.xml',
     ],
     'license': 'LGPL-3',
 }

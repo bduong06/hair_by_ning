@@ -115,9 +115,29 @@ class HairByNingAppointmentController(AppointmentController):
                     if(len(day['slots']) > 0):
                         slots.append(day)
 
-        appointment = {"appointment_type_id": appointment_type.id, "name": appointment_type.name, "location": appointment_type.location, 
-            "appointment_tz": appointment_type.appointment_tz, "assign_method": appointment_type.assign_method, 
-            "asked_capacity": page_values["asked_capacity"], "slots": slots
+        product_tmpl_id = appointment_type.product_id.product_tmpl_id
+
+        product_variants = []
+        for product_variant in product_tmpl_id.product_variant_ids:
+            product_variants.append({
+                'name': product_variant.product_template_attribute_value_ids.name,
+                'id': product_variant.id,
+                'price_extra': product_variant.price_extra
+            })
+
+        appointment = {
+            "appointment_type_id": appointment_type.id, 
+            "name": appointment_type.name, 
+            "location_str": appointment_type.location, 
+            "duration_str": int(appointment_type.appointment_duration), 
+            "appointment_tz": appointment_type.appointment_tz, 
+            "assign_method": appointment_type.assign_method, 
+            "asked_capacity": page_values["asked_capacity"], 
+            "slots": slots,
+            "service_name": product_tmpl_id.display_name,
+            "list_price": product_tmpl_id.list_price,
+            "product_variants": json.dumps(product_variants),
+            "attribute_name": product_tmpl_id.attribute_line_ids.display_name,
         }
         return {'appointment': appointment}
 
@@ -197,6 +217,7 @@ class HairByNingAppointmentController(AppointmentController):
         :param asked_capacity: the asked capacity for the appointment
         :param filter_appointment_type_ids: see ``Appointment.appointments()`` route
         """
+        product_variant_id = unquote_plus(kwargs.get('product_variant_id'))
         appointment_type_id = unquote_plus(kwargs.get('appointment_type_id'))
         date_time = unquote_plus(kwargs.get('date_time'))
         duration = unquote_plus(kwargs.get('duration'))
@@ -225,7 +246,7 @@ class HairByNingAppointmentController(AppointmentController):
 
         if not self._check_appointment_is_valid_slot(appointment_type, staff_user_id, resource_selected_id, available_resource_ids, date_time, duration, asked_capacity, **kwargs):
             raise NotFound()
-
+        variant = self.env['product.product'].browse(product_variant_id)
         partner = self._get_customer_partner()
         partner_data = partner.read(fields=['name', 'phone', 'email'])[0] if partner else {}
         date_time = unquote_plus(date_time)
@@ -233,17 +254,20 @@ class HairByNingAppointmentController(AppointmentController):
         day_name = format_datetime(date_time_object, 'EEE', locale=get_lang(request.env).code)
         date_formated = format_date(date_time_object.date(), locale=get_lang(request.env).code)
         time_locale = format_time(date_time_object.time(), locale=get_lang(request.env).code, format='short')
-        resource = request.env['appointment.resource'].sudo().browse(int(resource_selected_id)) if resource_selected_id else request.env['appointment.resource']
-        staff_user = request.env['res.users'].browse(int(staff_user_id)) if staff_user_id else request.env['res.users']
-        users_possible = self._get_possible_staff_users(
-            appointment_type,
-            json.loads(unquote_plus(kwargs.get('filter_staff_user_ids') or '[]')),
-        )
-        resources_possible = self._get_possible_resources(
-            appointment_type,
-            json.loads(unquote_plus(kwargs.get('filter_resource_ids') or '[]')),
-        )
+#        resource = request.env['appointment.resource'].sudo().browse(int(resource_selected_id)) if resource_selected_id else request.env['appointment.resource']
+#        staff_user = request.env['res.users'].browse(int(staff_user_id)) if staff_user_id else request.env['res.users']
+#        users_possible = self._get_possible_staff_users(
+#            appointment_type,
+#            json.loads(unquote_plus(kwargs.get('filter_staff_user_ids') or '[]')),
+#        )
+#        resources_possible = self._get_possible_resources(
+#            appointment_type,
+#            json.loads(unquote_plus(kwargs.get('filter_resource_ids') or '[]')),
+#        )
         return { 'partner_data': partner_data,
+            'list_price': variant.price,
+            'product_variant_id': variant.id,
+            'service_name': appointment_type.name,
             'appointment_type_id': appointment_type.id,
             'location': appointment_type.location,
             'datetime': date_time,
@@ -442,4 +466,19 @@ class HairByNingAppointmentController(AppointmentController):
                 appointment_invite, guests, name, customer, staff_user, date_start, date_end
             )
         })
-        return {'status': 200}
+        timezone =pytz.timezone(request.session.get('timezone'))
+        data = {
+            'service_name': event.name,
+            'location': event.location,
+            'guest_name': event.partner_ids.name,
+            'phone': event.partner_ids.phone,
+            'date': event.start_date,
+            'start_datetime': event.start.astimezone(timezone),
+            'stop_datetime': event.stop.astimezone(timezone),
+            'guest_count': event.attendees_count,
+        }
+
+        return {
+            'status': 200,
+            'data': data
+        }

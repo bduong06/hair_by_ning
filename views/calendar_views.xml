@@ -1,17 +1,26 @@
 <?xml version="1.0"?>
   <odoo>
-    <record id="calendar_event_view_form_gantt_booking_inherit" model="ir.ui.view">
-        <field name="name">calendar.event.view.form.gantt.booking.inherit</field>
+    <record id="calendar_event_view_form_gantt_booking_inherit_hair_by_ning" model="ir.ui.view">
+        <field name="name">calendar.event.view.form.gantt.booking.inherit.hair_by_ning</field>
         <field name="model">calendar.event</field>
         <field name="inherit_id" ref="appointment.calendar_event_view_form_gantt_booking"/>
         <field name="arch" type="xml">
+            <xpath expr="//field[@name='appointment_type_id']" position="after">
+                <field name="appointment_status" position="move"/>
+            </xpath>
             <xpath expr="//field[@name='appointment_type_id']" position="replace">
+                <field name="variant_count" invisible="1"/>
+                <field name="product_tmpl_id" invisible="1"/>
+                <field name="product_variant_id" options="{'no_create': True}" domain="[('product_tmpl_id', '=', product_tmpl_id)]" widget="hbn_appointment_type_sync_duration" invisible="not variant_count"/>
                 <field name="appointment_type_id" options="{'no_create': True}" widget="hbn_appointment_type_sync_duration"/>
+            </xpath>
+            <xpath expr="//div[hasclass('oe_title')]" position="attributes">
+                <attribute name="invisible">1</attribute>
             </xpath>
         </field>
     </record>
-    <record id="calendar_event_view_form_booking" model="ir.ui.view">
-        <field name="name">calendar.event.view.form.booking</field>
+    <record id="calendar_event_view_form_gantt_booking_hair_by_ning" model="ir.ui.view">
+        <field name="name">calendar.event.view.form.gantt.booking.hair_by_ning</field>
         <field name="model">calendar.event</field>
         <field name="arch" type="xml">
             <form string="Bookings">
@@ -24,7 +33,7 @@
                         <span class="me-1">You are scheduling a booking outside the available hours of</span>
                         <field name="on_leave_resource_ids" widget="many2many_tags" readonly="1"/>
                     </div>
-                    <div class="oe_title mb-3">
+                    <div class="oe_title mb-3" invisible="1">
                         <label for="name" string="Booking Name"/>
                         <h1>
                             <field name="name" placeholder='e.g. "John Doe - Tennis Court Booking"' required="True"/>
@@ -32,8 +41,11 @@
                     </div>
                     <group>
                         <group>
-                            <field name="appointment_status" string="Status" invisible="not appointment_type_id" required="appointment_type_id"/>
+                            <field name="product_variant_id" options="{'no_create': True}" domain="[('product_tmpl_id', '=', product_tmpl_id)]" widget="hbn_appointment_type_sync_duration" invisible="not variant_count"/>
                             <field name="appointment_type_id" options="{'no_create': True}" widget="hbn_appointment_type_sync_duration"/>
+                            <field name="variant_count" invisible="1"/>
+                            <field name="product_tmpl_id" invisible="1"/>
+                            <field name="appointment_status" string="Status" invisible="not appointment_type_id" required="appointment_type_id"/>
                             <label for="start" string="Date"/>
                             <div class="o_row">
                                 <field name="start"/>
@@ -78,19 +90,19 @@
             </form>
         </field>
     </record>
-    <record id="view_calendar_event_calendar_inherit" model="ir.ui.view">
-        <field name="name">calendar.event.calendar.inherit</field>
+    <record id="view_calendar_event_calendar_hair_by_ning_inherit" model="ir.ui.view">
+        <field name="name">calendar.event.calendar.hair_by_ning.inherit</field>
         <field name="model">calendar.event</field>
         <field name="inherit_id" ref="calendar.view_calendar_event_calendar"/>
         <field name="arch" type="xml">
           <xpath expr="//calendar" position="attributes">
              <attribute name="js_class">appointment_booking_form</attribute>
-             <attribute name="form_view_id">%(calendar_event_view_form_booking)d</attribute>
+             <attribute name="form_view_id">%(calendar_event_view_form_gantt_booking_hair_by_ning)d</attribute>
           </xpath>
         </field>
     </record>
-    <record id="calendar_event_view_gantt_booking_resource_inherit" model="ir.ui.view">
-        <field name="name">calendar.event.view.gantt.booking.resource.inherit</field>
+    <record id="calendar_event_view_gantt_booking_resource_hair_by_ning_inherit" model="ir.ui.view">
+        <field name="name">calendar.event.view.gantt.booking.resource.hair_by_ning.inherit</field>
         <field name="model">calendar.event</field>
         <field name="inherit_id" ref="appointment.calendar_event_view_gantt_booking_resource"/>
         <field name="arch" type="xml">
@@ -98,6 +110,43 @@
             <attribute name="slot_min_time">11:00</attribute>
             <attribute name="slot_max_time">22:00</attribute>
           </xpath>
+        </field>
+    </record>
+    <record id="view_event_view_form_inherit_hair_by_ning" model="ir.ui.view">
+        <field name="name">calendar.event.view.form.inherit.hair_by_ning</field>
+        <field name="model">calendar.event</field>
+        <field name="inherit_id" ref="calendar.view_calendar_event_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='page_invitations']" position="after">
+                <page name="page_service" string="Service Details">
+                    <div class="row">
+                        <div class="col-2">
+                            <label for="deposit_amount" string="Deposit Amount"/>
+                            <field name="deposit_amount"/>
+                        </div>
+                        <div class="col-5 text-start">
+                            <button name="action_make_deposit" 
+                                    string="Make Deposit"
+                                    type="object" 
+                                    class="oe_highlight right" 
+                                    invisible="sale_order_id != False"/>
+                        </div>
+                        <div class="col-5 text-start">
+                            <button name="action_pos_booking_checkout" 
+                                    string="Check Out"
+                                    type="object" 
+                                    class="oe_highlight right" 
+                                    invisible="not sale_order_id != False"/>
+                        </div>
+                    </div>
+                    <group string="Financials">
+                    <!-- Show the linked SO as a clickable link -->
+                        <field name="sale_order_id" readonly="1" options="{'no_create': True}"/>
+                        <field name="sale_order"/>
+                        <field name="invoice_ids"/>
+                    </group>
+                </page>
+            </xpath>
         </field>
     </record>
   </odoo>

@@ -18,6 +18,8 @@ patch(GanttRenderer.prototype, {
    setup() {
         super.setup();
         const { slotMinTime, slotMaxTime } = this.model.metaData;
+        this.model.searchParams.context.default_appointment_status = 'request';
+        this.model.searchParams.context.default_name = 'default_name';
         this.hideNonBusinessHours =  (slotMinTime && slotMaxTime) ? true : false;
     },
     computeDerivedParams() {

@@ -143,6 +143,8 @@ patch(AttendeeCalendarController.prototype, {
                 ? startDate.set({ hour: startDate.hour + 1, minute: 0, second: 0 })
                 : startDate.set({ hour: startDate.hour, minute: 30, second: 0 });
         const stop = start.plus({ hour: 1 });
+        context.default_appointment_status = 'request';
+        context.default_name = 'default_name';
         context.start = serializeDateTime(start);
         context.stop = serializeDateTime(stop);
         context.default_start = serializeDateTime(start);
