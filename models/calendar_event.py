@@ -22,6 +22,7 @@ from odoo.tools import (
     SQL,
 )
 from odoo.tools.mail import html_keep_url
+from lxml import etree
 
 _logger = logging.getLogger(__name__)
 
@@ -56,14 +57,41 @@ class CalendarEvent(models.Model):
 
     product_variant_id = fields.Many2one(
         'product.product', 
-        string="Product Variant",
+        compute="_compute_product_variant_id",
+        inverse="_inverse_resource_ids_or_capacity",
+        string="Variant",
+    )
+
+    total_price = fields.Float(
+        string="Total Price",
+        compute="_compute_total_price"
+    )
+
+    booking_id = fields.Char(
+        string="Booking ID",
         store=True
     )
+
+    @api.depends('appointment_type_id')
+    def _compute_product_variant_id(self):
+        for record in self:
+            if self.resource_total_capacity_reserved:
+                    booked_resource = self.env.context.get('booked_resource')
+                    booking_line = record.booking_line_ids.filtered(lambda r: r.appointment_resource_id.id == booked_resource)
+                    record.product_variant_id = booking_line.product_variant_id
+            else:    
+                record.product_variant_id = None
 
     @api.depends('appointment_type_id')
     def _compute_product_tmpl_id(self):
         for record in self:
             record.product_tmpl_id = record.appointment_type_id.product_id.product_tmpl_id.id
+
+    @api.depends('booking_line_ids', 'booking_line_ids.product_variant_id')
+    def _compute_total_price(self):
+        for record in self:
+            for product in record.booking_line_ids.product_variant_id:
+                record.total_price += product.lst_price
 
     @api.depends('appointment_type_id')
     def _compute_variant_count(self):
@@ -93,6 +121,7 @@ class CalendarEvent(models.Model):
         for values in vals_list:
             if values['name'] == 'default_name':
                 values['name'] = self._set_event_name(values)
+            values['booking_id'] = self.env['ir.sequence'].next_by_code('booking_sequence_code')
         return super().create(vals_list)
 
     def action_make_deposit(self):
@@ -104,19 +133,20 @@ class CalendarEvent(models.Model):
 
         dep_amount = self.deposit_amount
 
+        order_line = []
+        for booking_line in self.booking_line_ids:
+            order_line.append((0, 0, {
+                'product_id': booking_line.product_variant_id.id,
+                'name': booking_line.display_name,
+                'product_uom_qty': booking_line.capacity_reserved,
+                'price_unit': booking_line.product_variant_id.lst_price,
+            }))
+
         # 3. Create the Sales Order for the service booking
         order = self.env['sale.order'].create({
             'partner_id': self.partner_ids.id,
             'origin': self.name,
-            'order_line': [
-                # The Main Service Line
-                (0, 0, {
-                    'product_id': self.product_variant_id.id,
-                    'name': self.name,
-                    'product_uom_qty': self.attendees_count,
-                    'price_unit': self.product_variant_id.lst_price,
-                }),
-            ],
+            'order_line': order_line,
         })
         order.action_confirm()
 
@@ -125,6 +155,7 @@ class CalendarEvent(models.Model):
             'advance_payment_method': 'fixed',
             'fixed_amount': dep_amount
         }
+
         down_payment_wizard = (self.env['sale.advance.payment.inv']
             .with_context({
                 'active_model': order._name, 
@@ -147,6 +178,7 @@ class CalendarEvent(models.Model):
             'amount': dep_amount,
             'journal_id': self.env['account.journal'].search([('type', '=', 'bank')], limit=1).id, # Replace with a valid journal
         })
+
         payment_register.action_create_payments()
 
         #create invoice with down payment deducted and leave it in draft, so items can be added at payment
@@ -205,8 +237,48 @@ class CalendarEvent(models.Model):
             'target': 'new', # Opens in a new tab so you don't lose the calendar
         }
 
+    @api.model
+    def get_attribute_name(self, appointment_type_id):
+        appointment = self.env['appointment.type'].sudo().browse(appointment_type_id)
+        return appointment.product_id.product_tmpl_id.attribute_line_ids.display_name
+
     def _set_event_name(self, values):
         appointment_type = self.env['appointment.type'].browse(values['appointment_type_id'])
         partner = self.env['res.partner'].browse(values['partner_ids'][0][1])
         return f"{partner.name} - {appointment_type.name} Booking"
 
+    def _inverse_resource_ids_or_capacity(self):
+        """Update booking lines as inverse of both resource capacity and resource_ids.
+
+        As both values are related to the booking line and resource capacity is dependant
+        on resources existing in the first place. They need to both use the same inverse
+        field to ensure there is no ordering conflict.
+        """
+        booking_lines = []
+        booking_lines_to_delete = self.env['appointment.booking.line']
+        for event in self:
+            resources = event.resource_ids
+            if resources:
+                # Ignore the inverse and keep the previous booking lines when we duplicate an event
+                if self.env.context.get('is_appointment_copied'):
+                    continue
+                if event.appointment_type_manage_capacity and event.resource_total_capacity_reserved:
+                    capacity_to_reserve = event.resource_total_capacity_reserved
+                else:
+                    capacity_to_reserve = sum(event.booking_line_ids.mapped('capacity_reserved')) or sum(resources.mapped('capacity'))
+                booking_lines_to_delete |= event.booking_line_ids
+                for resource in resources.sorted("shareable"):
+                    if event.appointment_type_manage_capacity and capacity_to_reserve <= 0:
+                        break
+                    booking_lines.append({
+                        'product_variant_id': event.product_variant_id.id,
+                        'appointment_resource_id': resource.id,
+                        'calendar_event_id': event.id,
+                        'capacity_reserved': min(resource.capacity, capacity_to_reserve),
+                    })
+                    capacity_to_reserve -= min(resource.capacity, capacity_to_reserve)
+                    capacity_to_reserve = max(0, capacity_to_reserve)
+            else:
+                booking_lines_to_delete |= event.booking_line_ids
+        booking_lines_to_delete.unlink()
+        self.env['appointment.booking.line'].sudo().create(booking_lines)

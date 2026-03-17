@@ -9,9 +9,11 @@
                 <field name="appointment_status" position="move"/>
             </xpath>
             <xpath expr="//field[@name='appointment_type_id']" position="replace">
+                <label class="product_variant_id_label" for="product_variant_id" string="" invisible="not variant_count"/>
+                <field name="product_variant_id" nolabel="1" options="{'no_create': True}" domain="[('product_tmpl_id', '=', product_tmpl_id)]" widget="appointment_type_product_variant" required="appointment_type_id" invisible="not variant_count"/>
                 <field name="variant_count" invisible="1"/>
                 <field name="product_tmpl_id" invisible="1"/>
-                <field name="product_variant_id" options="{'no_create': True}" domain="[('product_tmpl_id', '=', product_tmpl_id)]" widget="hbn_appointment_type_sync_duration" invisible="not variant_count"/>
+                <!--<field name="product_variant_id" options="{'no_create': True}" widget="appointment_type_product_variant" invisible="not variant_count" context="{'default_resource_id': resource_id}"/>-->
                 <field name="appointment_type_id" options="{'no_create': True}" widget="hbn_appointment_type_sync_duration"/>
             </xpath>
             <xpath expr="//div[hasclass('oe_title')]" position="attributes">
@@ -41,7 +43,8 @@
                     </div>
                     <group>
                         <group>
-                            <field name="product_variant_id" options="{'no_create': True}" domain="[('product_tmpl_id', '=', product_tmpl_id)]" widget="hbn_appointment_type_sync_duration" invisible="not variant_count"/>
+                            <label class="product_variant_id_label" for="product_variant_id" string="" invisible="not variant_count"/>
+                            <field name="product_variant_id" options="{'no_create': True}" domain="[('product_tmpl_id', '=', product_tmpl_id)]" nolabel="1" widget="appointment_type_product_variant" required="appointment_type_id" invisible="not variant_count"/>
                             <field name="appointment_type_id" options="{'no_create': True}" widget="hbn_appointment_type_sync_duration"/>
                             <field name="variant_count" invisible="1"/>
                             <field name="product_tmpl_id" invisible="1"/>
@@ -141,7 +144,7 @@
                     </div>
                     <group string="Financials">
                     <!-- Show the linked SO as a clickable link -->
-                        <field name="sale_order_id" readonly="1" options="{'no_create': True}"/>
+                        <!--<field name="sale_order_id" readonly="1" options="{'no_create': True}"/>-->
                         <field name="sale_order"/>
                         <field name="invoice_ids"/>
                     </group>

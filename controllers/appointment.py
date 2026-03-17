@@ -217,7 +217,7 @@ class HairByNingAppointmentController(AppointmentController):
         :param asked_capacity: the asked capacity for the appointment
         :param filter_appointment_type_ids: see ``Appointment.appointments()`` route
         """
-        product_variant_id = unquote_plus(kwargs.get('product_variant_id'))
+        product_variant_id = kwargs.get('product_variant_id')
         appointment_type_id = unquote_plus(kwargs.get('appointment_type_id'))
         date_time = unquote_plus(kwargs.get('date_time'))
         duration = unquote_plus(kwargs.get('duration'))
@@ -246,7 +246,16 @@ class HairByNingAppointmentController(AppointmentController):
 
         if not self._check_appointment_is_valid_slot(appointment_type, staff_user_id, resource_selected_id, available_resource_ids, date_time, duration, asked_capacity, **kwargs):
             raise NotFound()
-        variant = self.env['product.product'].browse(product_variant_id)
+
+        products = []
+        variants = request.env['product.product'].sudo().browse(list(map(int, product_variant_id)))
+        for variant in variants:
+            products.append({
+                'name': variant.product_template_attribute_value_ids.name,
+                'id': variant.id,
+                'lst_price': variant.lst_price
+            })
+
         partner = self._get_customer_partner()
         partner_data = partner.read(fields=['name', 'phone', 'email'])[0] if partner else {}
         date_time = unquote_plus(date_time)
@@ -265,8 +274,7 @@ class HairByNingAppointmentController(AppointmentController):
 #            json.loads(unquote_plus(kwargs.get('filter_resource_ids') or '[]')),
 #        )
         return { 'partner_data': partner_data,
-            'list_price': variant.price,
-            'product_variant_id': variant.id,
+            'products': json.dumps(products),
             'service_name': appointment_type.name,
             'appointment_type_id': appointment_type.id,
             'location': appointment_type.location,
@@ -300,6 +308,7 @@ class HairByNingAppointmentController(AppointmentController):
           fetch or create partners to add them as event attendees;
         """
         appointment_type_id = kwargs.get('appointment_type_id')
+        product_variant_id = kwargs.get('product_variant_id')
         datetime_str = kwargs.get('datetime_str')
         duration_str = kwargs.get('duration_str')
         name = kwargs.get('name')
@@ -422,6 +431,7 @@ class HairByNingAppointmentController(AppointmentController):
         booking_line_values = []
         if appointment_type.schedule_based_on == 'resources':
             capacity_to_assign = asked_capacity
+            i = 0
             for resource in resources:
                 resource_remaining_capacity = resources_remaining_capacity.get(resource)
                 new_capacity_reserved = min(resource_remaining_capacity, capacity_to_assign, resource.capacity)
@@ -430,7 +440,9 @@ class HairByNingAppointmentController(AppointmentController):
                     'appointment_resource_id': resource.id,
                     'capacity_reserved': new_capacity_reserved,
                     'capacity_used': new_capacity_reserved if resource.shareable and appointment_type.resource_manage_capacity else resource.capacity,
+                    'product_variant_id': int(product_variant_id[i]),
                 })
+                i += 1
 
         if invite_token:
             appointment_invite = request.env['appointment.invite'].sudo().search([('access_token', '=', invite_token)])
@@ -450,7 +462,7 @@ class HairByNingAppointmentController(AppointmentController):
     ):
         """ This method takes the output of the processing of appointment's form submission and
             creates the event corresponding to those values. Meant for overrides to set values
-            needed to set a specific redirection.
+            needed to set a specific redirection._id
 
             :returns: a dict of useful values used in the redirection to next step
         """
@@ -464,10 +476,11 @@ class HairByNingAppointmentController(AppointmentController):
             **appointment_type._prepare_calendar_event_values(
                 asked_capacity, booking_line_values, duration,
                 appointment_invite, guests, name, customer, staff_user, date_start, date_end
-            )
+            ),
         })
         timezone =pytz.timezone(request.session.get('timezone'))
         data = {
+            'total_price': event.total_price,
             'service_name': event.name,
             'location': event.location,
             'guest_name': event.partner_ids.name,
@@ -475,7 +488,8 @@ class HairByNingAppointmentController(AppointmentController):
             'date': event.start_date,
             'start_datetime': event.start.astimezone(timezone),
             'stop_datetime': event.stop.astimezone(timezone),
-            'guest_count': event.attendees_count,
+            'guest_count': event.resource_total_capacity_reserved,
+            'booking_id': event.booking_id
         }
 
         return {

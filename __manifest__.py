@@ -22,6 +22,7 @@ Allow clients to Schedule Appointments through the Portal
         ],
     },
     'data': [
+        'data/hair_by_ning_sequence.xml',
         'views/calendar_views.xml',
         'views/res_partner_views.xml',
         'views/sale_order_views.xml',

@@ -3,3 +3,5 @@
 
 from . import ir_ui_view
 from . import calendar_event
+from . import appointment_booking_line
+from . import account_move

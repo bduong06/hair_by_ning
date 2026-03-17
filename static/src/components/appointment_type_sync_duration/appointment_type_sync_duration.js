@@ -1,4 +1,4 @@
-import { onWillStart, onRendered } from "@odoo/owl";
+import { onWillStart } from "@odoo/owl";
 import { useRecordObserver } from "@web/model/relational_model/utils";
 import { Many2OneField, many2OneField } from "@web/views/fields/many2one/many2one_field";
 import { registry } from "@web/core/registry";
@@ -34,16 +34,10 @@ export class HBNAppointmentTypeSyncDuration extends Many2OneField {
                     );
                     if (appointmentDuration.length !== 0) {
                         record.update({'duration': appointmentDuration[0].appointment_duration});
-                        this.clearVariant();
                     }
                 }
             }
         });
-    }
-    clearVariant(){
-        var el = document.querySelector('[name="product_variant_id"]')?.querySelector('input');
-        el.value = "";
-
     }
 };
 

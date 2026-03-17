@@ -7,11 +7,11 @@ import {
     getRangeFromDate,
 } from "./gantt_helpers";
 import { _t } from "@web/core/l10n/translation";
-import { GanttRenderer } from "@web_gantt/gantt_renderer";
+import { AppointmentBookingGanttRenderer } from "@appointment/views/gantt/gantt_renderer";
 import { patch } from "@web/core/utils/patch";
 const { DateTime, Interval } = luxon;
 
-patch(GanttRenderer.prototype, {
+patch(AppointmentBookingGanttRenderer.prototype, {
     /**
      * @override
      */
@@ -168,6 +168,15 @@ patch(GanttRenderer.prototype, {
             const span = diffColumn(column1, column2, interval, this.model.metaData) * cellPart + delta2 - delta1;
             return [firstCol, firstCol + span];
         }
+    },
+    async onPillClicked(ev, pill) {
+        if (this.popover.isOpen) {
+            return;
+        }
+        const rowId = JSON.parse(pill.rowId);
+        this.actionService.currentController.props.context.booked_resource = rowId[0].resource_ids[0];
+        const popoverTarget = ev.target.closest(".o_gantt_pill_wrapper");
+        this.popover.open(popoverTarget, await this.getPopoverProps(pill));
     },
     ganttCellAttClass(row, column) {
         return {
