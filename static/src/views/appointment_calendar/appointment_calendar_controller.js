@@ -17,53 +17,22 @@ import { user } from "@web/core/user";
 import { CustomAppointmentFormViewDialog } from "@appointment/views/custom_appointment_form_dialog/custom_appointment_form_dialog";
 const { DateTime } = luxon;
 
-/*patch(AttendeeCalendarController, {
-    components: { ...AttendeeCalendarController.components, Dropdown },
-});*/
-
 patch(AttendeeCalendarController.prototype, {
     setup() {
         super.setup(...arguments);
+        if(this.props.context === undefined){
+            this.props.context = {};
+        }
+        this.props.context.no_mail_to_attendees = true;
         this.actionService = useService('action');
-/*        this.popover = usePopover(Tooltip, { position: "bottom" });
-        this.copyLinkRef = useRef("copyLinkRef");
-        this.orm = useService("orm");
-
-        this.appointmentState = useState({
-            data: {},
-            lastAppointment: false,
-        });
-
-        useSubEnv({
-            calendarState: useState({
-                mode: "default",
-            }),
-        });
-
-        onWillStart(async () => {
-            this.appointmentState.data = await rpc(
-                "/appointment/appointment_type/get_staff_user_appointment_types"
-            );
-            this.isAppointmentUser = await user.hasGroup("appointment.group_appointment_user");
-        });*/
     },
 
-/*    createRecord(record) {
-        if (!this.model.canCreate) {
-            return;
-        }
-        const currentAction = this.actionService.currentController;
-        if(currentAction.displayName === 'Resource Bookings'){
-
-        }
-        return this.editRecordInCreation(record);
-    },*/
     createRecord(record) {
         if (!this.model.canCreate) {
             return;
         }
         const currentAction = this.actionService.currentController;
-        if(currentAction.displayName === 'Resource Bookings'){
+        if(currentAction.action.xml_id === 'appointment.calendar_event_action_view_bookings_resources'){
             const context = this._getContext(record.start);
             this.openDialog({ context });
         } else {
@@ -79,7 +48,7 @@ patch(AttendeeCalendarController.prototype, {
     */
     onClickAddButton() {
         const currentAction = this.actionService.currentController;
-        if(currentAction.displayName === 'Resource Bookings') {
+        if(currentAction.action.xml_id === 'appointment.calendar_event_action_view_bookings_resources') {
             const focusDate = DateTime.now();
             const context = this._getContext(focusDate);
             this.openDialog({ context });
@@ -151,21 +120,4 @@ patch(AttendeeCalendarController.prototype, {
         context.default_stop = serializeDateTime(stop);
         return context;
     }
-/*    async _createCustomAppointmentType() {
-        const customAppointment = await rpc(
-            "/appointment/appointment_type/create_custom",
-            {
-                slots: this._getSlots(),
-                context: this.props.context, // This allows to propagate keys like default_opportunity_id / default_applicant_id
-            },
-        );
-        if (customAppointment.appointment_type_id) {
-            this.appointmentState.lastAppointment = {
-                'id': customAppointment.appointment_type_id,
-                'isCustom': true,
-                'url': customAppointment.invite_url,
-                'viewId': customAppointment.view_id,
-            }
-        }
-    },*/
 });

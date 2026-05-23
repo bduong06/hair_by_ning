@@ -13,11 +13,58 @@
                 <field name="product_variant_id" nolabel="1" options="{'no_create': True}" domain="[('product_tmpl_id', '=', product_tmpl_id)]" widget="appointment_type_product_variant" required="appointment_type_id" invisible="not variant_count"/>
                 <field name="variant_count" invisible="1"/>
                 <field name="product_tmpl_id" invisible="1"/>
-                <!--<field name="product_variant_id" options="{'no_create': True}" widget="appointment_type_product_variant" invisible="not variant_count" context="{'default_resource_id': resource_id}"/>-->
-                <field name="appointment_type_id" options="{'no_create': True}" widget="hbn_appointment_type_sync_duration"/>
+                <field name="appointment_type_id" required="1" options="{'no_create': True}" widget="hbn_appointment_type_sync_duration"/>
+            </xpath>
+            <xpath expr="//field[@name='partner_ids']" position="replace">
+                <field name="partner_ids" widget="many2many_tags_avatar"
+                        placeholder="Select attendees..."
+                        options="{'no_quick_create': True}"
+                        context="{'form_view_ref': 'base.view_partner_simple_form'}"
+                        class="oe_inline o_required_modifier o_field_highlight"  required="1" colspan="2"/>
             </xpath>
             <xpath expr="//div[hasclass('oe_title')]" position="attributes">
                 <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='description']" position="before">
+                <group invisible="sale_order_id or not booking_id">
+                    <div class="o_row text-end">
+                        <label class="oe_inline" for="deposit_amount" string="Deposit"/>
+                        <div style="max-width: 90px;">
+                            <field name="deposit_amount" nolabel="1"/>
+                        </div>
+                        <button name="action_make_deposit" 
+                            string="Pay Deposit"
+                            type="object" 
+                            class="oe_inline btn-primary oe_highlight ms-3"
+                        />
+                    </div>
+                </group>
+                <div invisible="not sale_order_id">
+                    <field name="invoice_ids"
+                            options="{'no_create': True, 
+                                'currency_field': 'currency_id'
+                            }"
+                            context="{
+                                'default_move_type': context.get('default_move_type'),
+                                'default_display_type': 'product',
+                            }" readonly="1">
+                            <list>
+                                <field name="currency_id" column_invisible="1"/>
+                                <field name="name" string="Number"/>
+                                <field name="amount_total_in_currency_signed" string="Total"/>
+                                <field name="amount_residual_signed" string="Amount Due"/>
+                                <field name="status_in_payment"
+                                    string="Status"
+                                    widget="badge"
+                                    decoration-info="state == 'draft'"
+                                    decoration-danger="payment_state == 'not_paid' and invoice_date_due &lt; context_today().strftime('%Y-%m-%d')"
+                                    decoration-warning="payment_state in ('partial', 'in_payment')"
+                                    decoration-success="payment_state in ('paid', 'reversed')"
+                                    invisible="payment_state == 'invoicing_legacy' or move_type == 'entry'"
+                                />
+                            </list>
+                        </field>
+                </div>
             </xpath>
         </field>
     </record>
@@ -45,7 +92,7 @@
                         <group>
                             <label class="product_variant_id_label" for="product_variant_id" string="" invisible="not variant_count"/>
                             <field name="product_variant_id" options="{'no_create': True}" domain="[('product_tmpl_id', '=', product_tmpl_id)]" nolabel="1" widget="appointment_type_product_variant" required="appointment_type_id" invisible="not variant_count"/>
-                            <field name="appointment_type_id" options="{'no_create': True}" widget="hbn_appointment_type_sync_duration"/>
+                            <field name="appointment_type_id" required="1" options="{'no_create': True}" widget="hbn_appointment_type_sync_duration"/>
                             <field name="variant_count" invisible="1"/>
                             <field name="product_tmpl_id" invisible="1"/>
                             <field name="appointment_status" string="Status" invisible="not appointment_type_id" required="appointment_type_id"/>
@@ -63,7 +110,7 @@
                             </div>
                         </group>
                         <group>
-                            <field name="partner_ids" widget="many2many_tags_avatar"
+                            <field name="partner_ids" required="1" widget="many2many_tags_avatar"
                                    placeholder="Select attendees..."
                                    options="{'no_quick_create': True}"
                                    context="{'form_view_ref': 'base.view_partner_simple_form'}"
@@ -76,7 +123,7 @@
                             <field name="appointment_type_manage_capacity" invisible="1"/>
                             <field name="appointment_type_schedule_based_on" invisible="1"/>
                             <field name="appointment_resource_ids" invisible="1"/>
-                            <field name="resource_ids" string="Resources" options="{'no_create': True}"
+                            <field name="resource_ids" required="1" string="Resources" options="{'no_create': True}"
                                    invisible="not appointment_type_id or appointment_type_schedule_based_on != 'resources'"
                                    domain="[('appointment_type_ids', 'in', appointment_type_id)]" widget="many2many_tags"/>
                         </group>
@@ -120,7 +167,7 @@
         <field name="model">calendar.event</field>
         <field name="inherit_id" ref="calendar.view_calendar_event_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//page[@name='page_invitations']" position="after">
+            <xpath expr="//page[@name='page_invitations']" position="before">
                 <page name="page_service" string="Service Details">
                     <div class="row">
                         <div class="col-2">
@@ -134,13 +181,6 @@
                                     class="oe_highlight right" 
                                     invisible="sale_order_id != False"/>
                         </div>
-                        <div class="col-5 text-start">
-                            <button name="action_pos_booking_checkout" 
-                                    string="Check Out"
-                                    type="object" 
-                                    class="oe_highlight right" 
-                                    invisible="not sale_order_id != False"/>
-                        </div>
                     </div>
                     <group string="Financials">
                     <!-- Show the linked SO as a clickable link -->
@@ -152,4 +192,23 @@
             </xpath>
         </field>
     </record>
+    <record id="calendar_event_view_tree_booking_inherit_hair_by_ning" model="ir.ui.view">
+        <field name="name">calendar.event.view.list.booking.inherit.hair_by_ning</field>
+        <field name="model">calendar.event</field>
+        <field name="inherit_id" ref="appointment.calendar_event_view_tree_booking"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='name']" position="replace"/>
+            <xpath expr="//field[@name='attendee_ids']" position="replace">
+                <field name="attendee_ids" string="Customer" 
+                context="{'app_view_ref': 'hair_by_ning.calendar_event_view_form_gantt_booking_inherit_hair_by_ning'}"
+                widget="many2many_tags"/>
+            </xpath>
+            <xpath expr="//field[@name='appointment_resource_ids']" position="replace"/>
+            <xpath expr="//field[@name='stop']" position="replace"/>
+            <xpath expr="//field[@name='resource_total_capacity_reserved']" position="replace"/>
+            <xpath expr="//field[@name='resource_total_capacity_used']" position="replace">
+            </xpath>
+        </field>
+    </record>
+
   </odoo>

@@ -21,6 +21,7 @@ from odoo.tools import (
     is_html_empty,
     SQL,
 )
+from odoo.http import request
 from odoo.tools.mail import html_keep_url
 from lxml import etree
 
@@ -30,7 +31,12 @@ class CalendarEvent(models.Model):
     _inherit = "calendar.event"
 
     sale_order_id = fields.Many2one('sale.order', string="Sales Order")
-    deposit_amount = fields.Integer(string="Deposit Amount")
+
+    deposit_amount = fields.Integer(
+        string="Deposit Amount",
+        compute='_compute_deposit_amount',
+        inverse='_inverse_compute_deposit_amount',
+    )
 
     sale_order = fields.Many2many(
         'sale.order', 
@@ -67,17 +73,44 @@ class CalendarEvent(models.Model):
         compute="_compute_total_price"
     )
 
+    company_currency_id = fields.Many2one(
+        'res.currency',
+        default=lambda self: self.env.company.currency_id, 
+        readonly=True
+    )
+
     booking_id = fields.Char(
         string="Booking ID",
         store=True
     )
 
+    @api.model
+    def default_get(self, fields_list):
+        res = super().default_get(fields_list)
+        resource_ids = self.env.context.get('default_resource_ids', [])
+        if res.get('appointment_type_id') and resource_ids and 'appointment_type_id' in fields_list:
+            res['appointment_type_id'] = False
+        return res
+        
     @api.depends('appointment_type_id')
+    def _compute_deposit_amount(self):
+        for record in self:
+            for booking_line in record.booking_line_ids:
+                price_unit = booking_line.product_variant_id.lst_price,
+                if price_unit[0] <= 500:
+                    record.deposit_amount += 150
+                else:
+                    record.deposit_amount += 300
+
+    @api.depends('appointment_type_id')
+    def _inverse_compute_deposit_amount(self):
+        pass
+
+    @api.depends('appointment_type_id', 'booking_line_ids')
     def _compute_product_variant_id(self):
         for record in self:
-            if self.resource_total_capacity_reserved:
-                    booked_resource = self.env.context.get('booked_resource')
-                    booking_line = record.booking_line_ids.filtered(lambda r: r.appointment_resource_id.id == booked_resource)
+            if self.resource_total_capacity_reserved and record.booking_line_ids:
+                    booking_line = record.booking_line_ids[0]
                     record.product_variant_id = booking_line.product_variant_id
             else:    
                 record.product_variant_id = None
@@ -196,12 +229,16 @@ class CalendarEvent(models.Model):
         action = down_payment_wizard.create_invoices()
         invoice_ids = action.get('res_id') or action.get('domain',[('id','in',[])])[0][2]
         final_invoices = order.env['account.move'].browse(invoice_ids)
+        invoice_url = None
         for invoice in final_invoices:
             if invoice.state == 'draft':
                 invoice.write({
                     'invoice_date_due': self.start,
                     'invoice_payment_term_id': False 
                 })
+                invoice_url = invoice.get_portal_url()
+
+        uri = 'https://hairbyning.com' + invoice_url
 
         # 4. Link it back to the booking
         self.sale_order_id = order.id
@@ -211,30 +248,40 @@ class CalendarEvent(models.Model):
             'appointment_status': 'booked'
         })
         
+        attendee = self.env['calendar.attendee'].search([('event_id', '=', self.id)])
+        if attendee.partner_id.line_channel_count:
+            attendee._send_line_chat_confirmation(self.env.ref('line_chat.line_booking_confirmation', raise_if_not_found=False), uri)
+        elif attendee.partner_id.mm_channel_count:
+            attendee._send_meta_messenger_confirmation(self.env.ref('meta_messenger.meta_messenger_booking_confirmation', raise_if_not_found=False), uri)
         # Log to chatter so the admin sees it
         self.message_post(body=f"✅ Deposit Order {order.name} created.")
 
         return True
 
-    def action_pos_booking_checkout(self):
+    def action_checkout_booking(self):
         self.ensure_one()
-        # 1. Ensure a Sales Order exists
-        if not self.sale_order_id:
-            self.action_make_deposit()
-        
-        # 2. Get the URL for your POS Shop
-        # Replace '1' with your actual POS Config ID
-        pos_config = self.env['pos.config'].search([], limit=1)
+
         base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url')
         
-        # 3. Create a URL with the SO ID as a parameter
-        # We will 'catch' this parameter with JavaScript in the POS
-        pos_url = f"{base_url}/pos/ui?config_id={pos_config.id}&order_id={self.sale_order_id.id}"
-        
+        res_id = None
+        for invoice in self.invoice_ids:
+            if invoice.state == 'draft':
+                res_id = invoice.id
+
         return {
-            'type': 'ir.actions.act_url',
-            'url': pos_url,
-            'target': 'new', # Opens in a new tab so you don't lose the calendar
+            'type': 'ir.actions.act_window',
+            'res_model': 'account.move',  # Target model
+            'name': 'Open',  # Target model
+            'view_mode': 'form',
+            'view_type': 'form',
+            'res_id': res_id,
+            'view_id': self.env.ref('account.view_move_form').id, # Specific View
+            'target': 'new', # Key to open in a dialog
+            'flags': {'initial_mode': 'view'}, # Opens in readonly
+            'context': {
+                'default_move_type': 'out_invoice',
+                # Add default values here
+            },
         }
 
     @api.model

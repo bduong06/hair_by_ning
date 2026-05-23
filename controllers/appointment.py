@@ -1,8 +1,8 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
- 
 import json
 import pytz
 import re
+import requests
 from babel.dates import format_datetime, format_date, format_time
 from dateutil.relativedelta import relativedelta
 from odoo import http, Command, fields
@@ -22,6 +22,7 @@ from collections import defaultdict
 
 _logger = logging.getLogger(__name__)
 
+
 def _formated_weekdays(locale):
     """ Return the weekdays' name for the current locale
         from Mon to Sun.
@@ -39,6 +40,7 @@ def _formated_weekdays(locale):
 
 class HairByNingAppointmentController(AppointmentController):
 
+
     @http.route(['/hbn/appointment', '/hbn/appointment/page/<int:page>'],
            type='json', auth="public", website=True, sitemap=True)
     def appointment_type_list(self, page=1, **kwargs):
@@ -51,6 +53,10 @@ class HairByNingAppointmentController(AppointmentController):
         This param is propagated through templates to allow people to go back with the initial appointment
         types filter selection
         """
+        new_context = request.env.context.copy()
+        new_context.update({'lang': kwargs['context'].get('lang')})
+        request.env.context = new_context
+
         kwargs['domain'] = self._appointment_website_domain()
         appointment_types = self._prepare_appointments_list_data(**kwargs)
         result = defaultdict(list)
@@ -81,6 +87,10 @@ class HairByNingAppointmentController(AppointmentController):
         :param staff_user_id: id of the selected user, from upstream or coming back from an error.
         :param resource_selected_id: id of the selected resource, from upstream or coming back from an error.
         """
+
+        new_context = request.env.context.copy()
+        new_context.update({'lang': kwargs['context'].get('lang')})
+        request.env.context = new_context
 
         appointment_type_id = kwargs.get('appointment_type_id')
         staff_user_id = kwargs.get('staff_user_id')
@@ -217,6 +227,10 @@ class HairByNingAppointmentController(AppointmentController):
         :param asked_capacity: the asked capacity for the appointment
         :param filter_appointment_type_ids: see ``Appointment.appointments()`` route
         """
+        new_context = request.env.context.copy()
+        new_context.update({'lang': kwargs['context'].get('lang')})
+        request.env.context = new_context
+
         product_variant_id = kwargs.get('product_variant_id')
         appointment_type_id = unquote_plus(kwargs.get('appointment_type_id'))
         date_time = unquote_plus(kwargs.get('date_time'))
@@ -307,6 +321,26 @@ class HairByNingAppointmentController(AppointmentController):
         :param str guest_emails: optional line-separated guest emails. It will
           fetch or create partners to add them as event attendees;
         """
+
+        token = kwargs.get('cf-turnstile-response')
+        remoteip = request.httprequest.headers.get('CF-Connecting-IP') or \
+               request.httprequest.headers.get('X-Forwarded-For') or \
+               request.httprequest.remote_addr
+
+        validation = self._validate_turnstile(token, remoteip)
+
+        if not validation['success']:
+            # Invalid token - reject submission
+            return {
+                'status': 'error',
+                'message': 'Verification failed',
+                'errors': validation['error-codes']
+            }
+
+        new_context = request.env.context.copy()
+        new_context.update({'lang': kwargs['context'].get('lang')})
+        request.env.context = new_context
+
         appointment_type_id = kwargs.get('appointment_type_id')
         product_variant_id = kwargs.get('product_variant_id')
         datetime_str = kwargs.get('datetime_str')
@@ -322,6 +356,7 @@ class HairByNingAppointmentController(AppointmentController):
             search=kwargs.get('search'),
             invite_token=kwargs.get('invite_token')
         )
+
 
         available_appointments = self._fetch_and_check_private_appointment_types(
             kwargs.get('filter_appointment_type_ids'),
@@ -371,25 +406,39 @@ class HairByNingAppointmentController(AppointmentController):
 
         customer = self._get_customer_partner()
 
-        # considering phone and email are mandatory
-        new_customer = not (customer.email) or not (customer.phone)
-        if not new_customer and customer.email != email and customer.email_normalized != email_normalize(email):
-            new_customer = True
-        if not new_customer and not customer.phone:
-            new_customer = True
-        if not new_customer:
-            customer_phone_fmt = customer._phone_format(fname="phone")
-            input_country = self._get_customer_country()
-            input_phone_fmt = phone_validation.phone_format(phone, input_country.code, input_country.phone_code, force_format="E164", raise_exception=False)
-            new_customer = customer.phone != phone and customer_phone_fmt != input_phone_fmt
 
+        # considering phone and email are mandatory
+#        new_customer = not (customer.email) or not (customer.phone)
+#        if not new_customer and customer.email != email and customer.email_normalized != email_normalize(email):
+#            new_customer = True
+#        if not new_customer and not customer.phone:
+#            new_customer = True
+#        if not new_customer:
+#            customer_phone_fmt = customer._phone_format(fname="phone")
+#            input_country = self._get_customer_country()
+#            input_phone_fmt = phone_validation.phone_format(phone, input_country.code, input_country.phone_code, force_format="E164", raise_exception=False)
+#            new_customer = customer.phone != phone and customer_phone_fmt != input_phone_fmt
+
+        new_customer = not (customer.exists())
+
+        phone = customer._phone_format(number=phone, country=self._get_customer_country()) or phone
         if new_customer:
-            customer = customer.create({
-                'name': name,
-                'phone': customer._phone_format(number=phone, country=self._get_customer_country()) or phone,
-                'email': email,
-                'lang': request.lang.code,
-            })
+            customer = request.env['res.partner'].sudo().search([
+                                ('name', '=', name),
+                                ('phone', '=', phone)
+                        ])
+            if not customer.exists():
+                customer = customer.create({
+                    'name': name,
+                    'phone': customer._phone_format(number=phone, country=self._get_customer_country()) or phone,
+                    'email': email,
+                    'lang': request.lang.code,
+                })
+        else:
+            if not customer.phone:
+                customer.write({
+                    'phone': customer._phone_format(number=phone, country=self._get_customer_country()) or phone 
+                })
 
         # partner_inputs dictionary structures all answer inputs received on the appointment submission: key is question id, value
         # is answer id (as string) for choice questions, text input for text questions, array of ids for multiple choice questions.
@@ -496,3 +545,28 @@ class HairByNingAppointmentController(AppointmentController):
             'status': 200,
             'data': data
         }
+
+    def _validate_turnstile(self, token, remoteip=None):
+
+        if request.httprequest.host == 'hairbyning.com':
+            secret = '0x4AAAAAADC5GfaxS3wooDg8Y3kj9fedyvI' 
+        else:
+            secret = '1x0000000000000000000000000000000AA'
+
+        url = 'https://challenges.cloudflare.com/turnstile/v0/siteverify'
+
+        data = {
+            'secret': secret,
+            'response': token
+        }
+
+        if remoteip:
+            data['remoteip'] = remoteip
+
+        try:
+            response = requests.post(url, data=data, timeout=10)
+            response.raise_for_status()
+            return response.json()
+        except requests.RequestException as e:
+            print(f"Turnstile validation error: {e}")
+            return {'success': False, 'error-codes': ['internal-error']}

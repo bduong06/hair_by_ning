@@ -48,8 +48,9 @@ export class AppointmentTypeProductVariant extends Many2OneField {
     }
     clearVariant(){
         var el = document.querySelector('[name="product_variant_id"]')?.querySelector('input');
-        el.value = "";
-
+        if(el){
+            el.value = "";
+        }
     }
 };
 

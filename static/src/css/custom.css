@@ -1,0 +1,3 @@
+.o_form_view .o_group .o_field_many2many_tags .o_tag:hover {
+    cursor: pointer;
+}
