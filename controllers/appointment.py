@@ -549,7 +549,7 @@ class HairByNingAppointmentController(AppointmentController):
     def _validate_turnstile(self, token, remoteip=None):
 
         if request.httprequest.host == 'hairbyning.com':
-            secret = '0x4AAAAAADC5GfaxS3wooDg8Y3kj9fedyvI' 
+            secret = os.environ.get('TURNSTILE_SECRET')
         else:
             secret = '1x0000000000000000000000000000000AA'
 
