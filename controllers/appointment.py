@@ -15,6 +15,7 @@ from odoo.tools.mail import is_html_empty
 from odoo.tools.misc import babel_locale_parse, get_lang
 from odoo.addons.base.models.ir_qweb import keep_query
 from datetime import datetime, date
+from odoo.tools import config
 from odoo.addons.phone_validation.tools import phone_validation
 from odoo.tools import DEFAULT_SERVER_DATETIME_FORMAT as dtf, email_normalize
 
@@ -549,7 +550,7 @@ class HairByNingAppointmentController(AppointmentController):
     def _validate_turnstile(self, token, remoteip=None):
 
         if request.httprequest.host == 'hairbyning.com':
-            secret = os.environ.get('TURNSTILE_SECRET')
+            secret = config.get('turnstile_secret')
         else:
             secret = '1x0000000000000000000000000000000AA'
 

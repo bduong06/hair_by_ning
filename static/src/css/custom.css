@@ -1,3 +1,87 @@
+@font-face {
+    font-family: bootstrap-icons;
+    src: url("/hair_by_ning/static/src/fonts/bootstrap-icons.woff2") format("woff2"), url("/hair_by_ning/static/src/fonts/bootstrap-icons.woff") format("woff");
+    font-display: swap;
+}
+
 .o_form_view .o_group .o_field_many2many_tags .o_tag:hover {
     cursor: pointer;
+}
+
+.bi-facebook {
+    /*color: #fff;*/
+    color: #3B5998 !important; /* Official Facebook blue */
+}
+
+.btn-facebook {
+    color: #fff !important;
+    background-color: #3B5998 !important; /* Official Facebook blue */
+    border-color: #3B5998 !important; /* Official Facebook blue */
+}
+
+.btn-facebook:hover {
+    color: #fff !important;
+    background-color: #3B5998 !important; /* Official Facebook blue */
+    opacity: .8 !important;
+}
+
+.bi-line {
+    /*color: #fff;*/
+    color: #06C755 !important;
+}
+
+.btn-line {
+    color: #fff !important;
+    background-color: #06C755 !important;
+    border-color: #06C755 !important;
+}
+
+.btn-line:hover {
+    color: #fff !important;
+    background-color: #06C755 !important;
+    border-color: #06C755 !important;
+    opacity: .8 !important;
+}
+
+.bi::before,
+[class*=" bi-"]::before,
+[class^=bi-]::before {
+    display: inline-block;
+    font-family: bootstrap-icons !important;
+    font-style: normal;
+    font-weight: 400 !important;
+    font-variant: normal;
+    text-transform: none;
+    line-height: 1;
+    vertical-align: -.125em;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale
+}
+
+.bi-line {
+  width: 32px;
+  height: 32px;
+  display: inline-block;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 100%;
+ /* background-image: url('../images/icons/line.svg');*/
+}
+
+.bi-facebook {
+  width: 32px;
+  height: 32px;
+  display: inline-block;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 100%;
+ /* background-image: url('../images/icons/line.svg');*/
+}
+
+.bi-line::before {
+    content: "\f660";
+}
+
+.bi-facebook::before {
+    content: "\f344";
 }
