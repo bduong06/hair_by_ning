@@ -3,6 +3,9 @@
 
 import logging
 from odoo import api, fields, models, _
+from odoo.modules.registry import Registry
+from odoo import api, fields, models, _, SUPERUSER_ID
+from odoo import _
 
 _logger = logging.getLogger(__name__)
 
@@ -24,6 +27,7 @@ class AccountMove(models.Model):
                         if sale_line.order_id.amount_unpaid == 0.0:
                             event = self.env['calendar.event'].sudo().search([('sale_order_id', '=', sale_line.order_id.id)])
                             event.write({'appointment_status': 'attended'})
+                            self._post_after_commit()
         return res
 
     @api.depends('name')
@@ -43,3 +47,15 @@ class AccountMove(models.Model):
             else:
                 record.display_name = 'Not Paid'
 
+    @api.model
+    def _post_after_commit(self):
+        dbname = self.env.cr.dbname
+        @self.env.cr.postcommit.add
+        def send_comfirmation_with_new_cursor():
+            db_registry = Registry(dbname)
+            with db_registry.cursor() as cr:
+                partner_id = self.partner_id
+                if partner_id.line_user_id:
+                    self.env['line_chat.account'].send_after_booking_confirmation(self)
+                elif partner_id.mm_user_id:
+                    self.env['meta_messenger.account'].send_after_booking_confirmation(self)

@@ -151,11 +151,65 @@ class CalendarEvent(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
-        for values in vals_list:
-            if values['name'] == 'default_name':
-                values['name'] = self._set_event_name(values)
-            values['booking_id'] = self.env['ir.sequence'].next_by_code('booking_sequence_code')
-        return super().create(vals_list)
+        for vals in vals_list:
+            if vals['name'] == 'default_name':
+                vals['name'] = self._set_event_name(vals)
+            vals['booking_id'] = self.env['ir.sequence'].next_by_code('booking_sequence_code')
+
+            if 'resource_ids' in vals and not vals['resource_ids']:
+                appointment_type_id = vals.get('appointment_type_id')
+                start_str = vals.get('start')
+                stop_str = vals.get('stop')
+
+                if appointment_type_id and start_str and stop_str:
+                    appt_type = self.env['appointment.type'].browse(appointment_type_id)
+                    
+                    # Convert Odoo's string timestamps to Python datetime objects for math
+                    start_date = fields.Datetime.from_string(start_str)
+                    stop_date = fields.Datetime.from_string(stop_str)
+
+                    # --- NEW: Check for specialized salon service buffers ---
+                    # Let's say your wife's blonde service has a specific keyword or code
+                    # You can also add a custom integer field 'x_buffer_minutes' to the appointment.type model!
+                    #buffer_minutes = 0
+                    #if 'blonde' in appt_type.name.lower():
+                    #    buffer_minutes = 45  # Add a 45-minute buffer for blonde sessions
+                    #elif 'extension' in appt_type.name.lower():
+                    #    buffer_minutes = 30  # Add a 30-minute buffer for extensions
+
+                    #if buffer_minutes > 0:
+                        # Dynamically extend the stop time to block out the chair buffer
+                    #    stop_date = stop_date + timedelta(minutes=buffer_minutes)
+                        # Update the values dictionary so Odoo physically saves the longer slot
+                    #    vals['stop'] = fields.Datetime.to_string(stop_date)
+
+                    # --- Resource Chair Check (Using the updated stop_date) ---
+                    if appt_type.schedule_based_on == 'resources':
+                        available_chairs = appt_type.resource_ids
+                        assigned_chair = False
+                        
+                        vals['resource_ids'] = []
+                        for chair in available_chairs:
+                            # Scan for overlaps against the extended duration
+                            overlapping_booking = self.env['calendar.event'].sudo().search([
+                                ('resource_ids', '=', chair.id),
+                                ('start', '<', fields.Datetime.to_string(stop_date)),
+                                ('stop', '>', fields.Datetime.to_string(start_date)),
+                            ], limit=1)
+                            
+                            if not overlapping_booking:
+                                vals['resource_ids'].append([4, chair.id])
+                                assigned_chair += 1
+
+                            if assigned_chair == vals['resource_total_capacity_reserved']:
+                                break
+
+                        if not assigned_chair:
+                            raise ValidationError(_(
+                                "There are no chairs available for this time slot"
+                            ))
+
+        return super(CalendarEvent, self).create(vals_list)
 
     def action_make_deposit(self):
         self.ensure_one()
@@ -249,7 +303,7 @@ class CalendarEvent(models.Model):
         })
         
         attendee = self.env['calendar.attendee'].search([('event_id', '=', self.id)])
-        if attendee.partner_id.line_channel_count:
+        if attendee.partner_id.line_user_id:
             attendee._send_line_chat_confirmation(self.env.ref('line_chat.line_booking_confirmation', raise_if_not_found=False), uri)
         elif attendee.partner_id.mm_channel_count:
             attendee._send_meta_messenger_confirmation(self.env.ref('meta_messenger.meta_messenger_booking_confirmation', raise_if_not_found=False), uri)

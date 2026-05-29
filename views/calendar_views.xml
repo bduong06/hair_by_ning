@@ -103,7 +103,7 @@
                                 <field name="stop"/>
                             </div>
                             <field name="user_id" widget="many2one_avatar_user" options="{'no_create': True}"/>
-                            <div invisible="not resource_ids or not appointment_type_manage_capacity or appointment_type_schedule_based_on != 'resources'" colspan="2">
+                            <div invisible="not appointment_type_manage_capacity or appointment_type_schedule_based_on != 'resources'" colspan="2">
                                 <label for="resource_total_capacity_reserved" class="me-5"/>
                                 <field name="resource_total_capacity_reserved" string="Total Reserved" class="oe_inline"/>
                                 <span>people</span>
@@ -123,9 +123,8 @@
                             <field name="appointment_type_manage_capacity" invisible="1"/>
                             <field name="appointment_type_schedule_based_on" invisible="1"/>
                             <field name="appointment_resource_ids" invisible="1"/>
-                            <field name="resource_ids" required="1" string="Resources" options="{'no_create': True}"
-                                   invisible="not appointment_type_id or appointment_type_schedule_based_on != 'resources'"
-                                   domain="[('appointment_type_ids', 'in', appointment_type_id)]" widget="many2many_tags"/>
+                            <field name="resource_ids" string="Resources" options="{'no_create': True}"
+                                   invisible="1" domain="[('appointment_type_ids', 'in', appointment_type_id)]" widget="many2many_tags"/>
                         </group>
                         <field name="description" placeholder="Extra Comments..."/>
                     </group>
