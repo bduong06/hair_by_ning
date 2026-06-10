@@ -290,7 +290,7 @@ class CalendarEvent(models.Model):
                     'invoice_date_due': self.start,
                     'invoice_payment_term_id': False 
                 })
-                invoice_url = invoice.get_portal_url()
+                invoice_url = f"/inv/{invoice.id}"
 
         uri = 'https://hairbyning.com' + invoice_url
 
@@ -303,10 +303,9 @@ class CalendarEvent(models.Model):
         })
         
         attendee = self.env['calendar.attendee'].search([('event_id', '=', self.id)])
-        if attendee.partner_id.line_user_id:
-            attendee._send_line_chat_confirmation(self.env.ref('line_chat.line_booking_confirmation', raise_if_not_found=False), uri)
-        elif attendee.partner_id.mm_channel_count:
-            attendee._send_meta_messenger_confirmation(self.env.ref('meta_messenger.meta_messenger_booking_confirmation', raise_if_not_found=False), uri)
+        if attendee.partner_id.line_user_id or attendee.partner_id.mm_channel_count:
+            attendee._send_appointment_confirmation(uri)
+
         # Log to chatter so the admin sees it
         self.message_post(body=f"✅ Deposit Order {order.name} created.")
 

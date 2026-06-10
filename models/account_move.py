@@ -27,7 +27,7 @@ class AccountMove(models.Model):
                         if sale_line.order_id.amount_unpaid == 0.0:
                             event = self.env['calendar.event'].sudo().search([('sale_order_id', '=', sale_line.order_id.id)])
                             event.write({'appointment_status': 'attended'})
-                            self._post_after_commit()
+                            self._send_after_booking_confirmation()
         return res
 
     @api.depends('name')
@@ -48,7 +48,7 @@ class AccountMove(models.Model):
                 record.display_name = 'Not Paid'
 
     @api.model
-    def _post_after_commit(self):
+    def _send_after_booking_confirmation(self):
         dbname = self.env.cr.dbname
         @self.env.cr.postcommit.add
         def send_comfirmation_with_new_cursor():
