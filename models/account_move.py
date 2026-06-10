@@ -49,13 +49,8 @@ class AccountMove(models.Model):
 
     @api.model
     def _send_after_booking_confirmation(self):
-        dbname = self.env.cr.dbname
-        @self.env.cr.postcommit.add
-        def send_comfirmation_with_new_cursor():
-            db_registry = Registry(dbname)
-            with db_registry.cursor() as cr:
-                partner_id = self.partner_id
-                if partner_id.line_user_id:
-                    self.env['line_chat.account'].send_after_booking_confirmation(self)
-                elif partner_id.mm_user_id:
-                    self.env['meta_messenger.account'].send_after_booking_confirmation(self)
+        partner_id = self.partner_id
+        if partner_id.line_user_id:
+            self.env['line_chat.account'].send_after_booking_confirmation(self)
+        elif partner_id.mm_user_id:
+            self.env['meta_messenger.account'].send_after_booking_confirmation(self)
