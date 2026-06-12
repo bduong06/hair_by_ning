@@ -531,6 +531,7 @@ class HairByNingAppointmentController(AppointmentController):
         timezone =pytz.timezone(request.session.get('timezone'))
         data = {
             'total_price': event.total_price,
+            'deposit_amount': event.deposit_amount,
             'service_name': event.name,
             'location': event.location,
             'guest_name': event.partner_ids.name,
