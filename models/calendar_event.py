@@ -297,10 +297,6 @@ class CalendarEvent(models.Model):
         # 4. Link it back to the booking
         self.sale_order_id = order.id
         self.appointment_status = 'booked'
-        self.write({
-            'sale_order_id': order.id,
-            'appointment_status': 'booked'
-        })
         
         attendee = self.env['calendar.attendee'].search([('event_id', '=', self.id)])
         if attendee.partner_id.line_user_id or attendee.partner_id.mm_channel_count:

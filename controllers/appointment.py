@@ -59,9 +59,15 @@ class HairByNingAppointmentController(AppointmentController):
         request.env.context = new_context
 
         kwargs['domain'] = self._appointment_website_domain()
-        appointment_types = self._prepare_appointments_list_data(**kwargs)
+
+        appointment_type_ids = request.env['appointment.type'].sudo().search(kwargs['domain']).ids
+
+        appointment_types = request.env['appointment.type'].sudo().browse(appointment_type_ids).exists()
+
+        appointment_types = appointment_types.filtered_domain(kwargs['domain'])
+
         result = defaultdict(list)
-        for appointment in appointment_types['appointment_types']:
+        for appointment in appointment_types:
             data = {
                 'id': appointment.id,
                 'name': appointment.name,
@@ -70,9 +76,10 @@ class HairByNingAppointmentController(AppointmentController):
             result[appointment.location].append(data)
         
 
-        return {'appointment_types' : result,
-                'csrf_token' : request.csrf_token()
-                }
+        return {
+            'appointment_types' : result,
+            'csrf_token' : request.csrf_token()
+        }
 
     @http.route(['/hbn/appointment/appointment_type'],
            type='json', auth="public", website=True, sitemap=True)
@@ -93,7 +100,7 @@ class HairByNingAppointmentController(AppointmentController):
         new_context.update({'lang': kwargs['context'].get('lang')})
         request.env.context = new_context
 
-        appointment_type_id = kwargs.get('appointment_type_id')
+        appointment_type_id = kwargs.get('appointment_type_id', False)
         staff_user_id = kwargs.get('staff_user_id')
         resource_selected_id = kwargs.get('resource_selected_id')
         state = kwargs.get('state')
@@ -111,7 +118,7 @@ class HairByNingAppointmentController(AppointmentController):
             kwargs.get('invite_token'),
             domain=kwargs['domain']
         )
-        appointment_type = available_appointments.filtered(lambda appt: appt.id == int(appointment_type_id))
+        appointment_type = available_appointments.filtered(lambda appointment_type: appointment_type.id == int(appointment_type_id))
 
         kwargs['available_appointments'] = available_appointments
         if not appointment_type:
@@ -170,7 +177,13 @@ class HairByNingAppointmentController(AppointmentController):
             default_filter_record=page_values[f'{filter_prefix}_default'],
             possible_filter_records=page_values[f'{filter_prefix}s_possible'],
             asked_capacity=asked_capacity)
-        formated_days = _formated_weekdays(get_lang(request.env).code)
+        
+        if request.env is not None:
+            locale = get_lang(request.env).code
+        else:
+            locale = 'th_TH'
+
+        formated_days = _formated_weekdays(locale)
 
         return {
             'appointment_type': appointment_type,
@@ -196,10 +209,7 @@ class HairByNingAppointmentController(AppointmentController):
             - month_first_available: the first month that has available slots or False if there is none
         """
 
-        if kwargs.get('date'):
-            reference_date = datetime.strptime(kwargs.get('date'), "%Y-%m-%d")
-        else:
-            reference_date = None
+        reference_date = datetime.strptime(kwargs.get('date', ""), "%Y-%m-%d")
 
         slots = appointment_type._get_appointment_slots(
             request.session['timezone'],
@@ -232,14 +242,19 @@ class HairByNingAppointmentController(AppointmentController):
         new_context.update({'lang': kwargs['context'].get('lang')})
         request.env.context = new_context
 
-        product_variant_id = kwargs.get('product_variant_id')
-        appointment_type_id = unquote_plus(kwargs.get('appointment_type_id'))
-        date_time = unquote_plus(kwargs.get('date_time'))
-        duration = unquote_plus(kwargs.get('duration'))
-        staff_user_id = None if kwargs.get('staff_user_id') is None else unquote_plus(kwargs.get('staff_user_id'))
-        resource_selected_id = None if kwargs.get('resource_selected_id') is None else unquote_plus(kwargs.get('resource_selected_id'))
-        available_resource_ids = None if kwargs.get('available_resource_ids') is None else unquote_plus(kwargs.get('available_resource_ids'))
-        asked_capacity = 1 if kwargs.get('asked_capacity') is None else unquote_plus(kwargs.get('asked_capacity'))
+        if request.env is not None:
+            locale = get_lang(request.env).code
+        else:
+            locale = 'th_TH'
+
+        product_variant_id = kwargs.get('product_variant_id', 0)
+        appointment_type_id = unquote_plus(kwargs.get('appointment_type_id', ""))
+        date_time = unquote_plus(kwargs.get('date_time', ""))
+        duration = unquote_plus(kwargs.get('duration', ""))
+        staff_user_id = unquote_plus(kwargs.get('staff_user_id', ""))
+        resource_selected_id = unquote_plus(kwargs.get('resource_selected_id', ""))
+        available_resource_ids = unquote_plus(kwargs.get('available_resource_ids', ""))
+        asked_capacity = unquote_plus(kwargs.get('asked_capacity', 1))
         kwargs = {}
 
         domain = self._appointments_base_domain(
@@ -275,19 +290,10 @@ class HairByNingAppointmentController(AppointmentController):
         partner_data = partner.read(fields=['name', 'phone', 'email'])[0] if partner else {}
         date_time = unquote_plus(date_time)
         date_time_object = datetime.strptime(date_time, dtf)
-        day_name = format_datetime(date_time_object, 'EEE', locale=get_lang(request.env).code)
-        date_formated = format_date(date_time_object.date(), locale=get_lang(request.env).code)
-        time_locale = format_time(date_time_object.time(), locale=get_lang(request.env).code, format='short')
-#        resource = request.env['appointment.resource'].sudo().browse(int(resource_selected_id)) if resource_selected_id else request.env['appointment.resource']
-#        staff_user = request.env['res.users'].browse(int(staff_user_id)) if staff_user_id else request.env['res.users']
-#        users_possible = self._get_possible_staff_users(
-#            appointment_type,
-#            json.loads(unquote_plus(kwargs.get('filter_staff_user_ids') or '[]')),
-#        )
-#        resources_possible = self._get_possible_resources(
-#            appointment_type,
-#            json.loads(unquote_plus(kwargs.get('filter_resource_ids') or '[]')),
-#        )
+        day_name = format_datetime(date_time_object, 'EEE', locale=locale)
+        date_formated = format_date(date_time_object.date(), locale=locale)
+        time_locale = format_time(date_time_object.time(), locale=locale, format='short')
+
         return { 'partner_data': partner_data,
             'products': json.dumps(products),
             'service_name': appointment_type.name,
@@ -342,22 +348,21 @@ class HairByNingAppointmentController(AppointmentController):
         new_context.update({'lang': kwargs['context'].get('lang')})
         request.env.context = new_context
 
-        appointment_type_id = kwargs.get('appointment_type_id')
-        product_variant_id = kwargs.get('product_variant_id')
-        datetime_str = kwargs.get('datetime_str')
-        duration_str = kwargs.get('duration_str')
+        appointment_type_id = kwargs.get('appointment_type_id', 0)
+        product_variant_id = kwargs.get('product_variant_id', 0)
+        datetime_str = kwargs.get('datetime_str', datetime.now())
+        duration_str = kwargs.get('duration_str', 0)
         name = kwargs.get('name')
         phone = kwargs.get('phone')
         email = kwargs.get('email')
         available_resource_ids= kwargs.get('available_resource_ids')
-        asked_capacity = kwargs.get('asked_capacity')
+        asked_capacity = kwargs.get('asked_capacity', 1)
         guest_emails_str= kwargs.get('guest_emails_str')
         domain = self._appointments_base_domain(
             filter_appointment_type_ids=kwargs.get('filter_appointment_type_ids'),
             search=kwargs.get('search'),
             invite_token=kwargs.get('invite_token')
         )
-
 
         available_appointments = self._fetch_and_check_private_appointment_types(
             kwargs.get('filter_appointment_type_ids'),
@@ -366,6 +371,7 @@ class HairByNingAppointmentController(AppointmentController):
             kwargs.get('invite_token'),
             domain=domain,
         )
+
         appointment_type = available_appointments.filtered(lambda appt: appt.id == int(appointment_type_id))
 
         if not appointment_type:
@@ -373,9 +379,12 @@ class HairByNingAppointmentController(AppointmentController):
         timezone = request.session.get('timezone') or appointment_type.appointment_tz
         tz_session = pytz.timezone(timezone)
         datetime_str = unquote_plus(datetime_str)
-        date_start = tz_session.localize(fields.Datetime.from_string(datetime_str)).astimezone(pytz.utc).replace(tzinfo=None)
+        if datetime_str:
+            date_start = tz_session.localize(datetime.fromisoformat(datetime_str)).astimezone(pytz.utc).replace(tzinfo=None)
+        else:
+            date_start = tz_session.localize(datetime.now()).astimezone(pytz.utc).replace(tzinfo=None)
         duration = float(duration_str)
-        date_end = date_start + relativedelta(hours=duration)
+        date_end = date_start + relativedelta(hours=duration_str)
         invite_token = kwargs.get('invite_token')
 
         staff_user = request.env['res.users']
@@ -384,7 +393,7 @@ class HairByNingAppointmentController(AppointmentController):
         asked_capacity = int(asked_capacity)
         resources_remaining_capacity = None
         if appointment_type.schedule_based_on == 'resources':
-            resource_ids = json.loads(unquote_plus(available_resource_ids))
+            resource_ids = json.loads(unquote_plus('available_resource_ids', ''))
             # Check if there is still enough capacity (in case someone else booked with a resource in the meantime)
             resources = request.env['appointment.resource'].sudo().browse(resource_ids).exists()
             if any(resource not in appointment_type.resource_ids for resource in resources):
@@ -394,7 +403,7 @@ class HairByNingAppointmentController(AppointmentController):
                 return request.redirect('/appointment/%s?%s' % (appointment_type.id, keep_query('*', state='failed-resource')))
         else:
             # check availability of the selected user again (in case someone else booked while the client was entering the form)
-            staff_user = request.env['res.users'].sudo().search([('id', '=', int(kwargs.get('staff_user_id')))])
+            staff_user = request.env['res.users'].sudo().search([('id', '=', int(kwargs.get('staff_user_id', 0)))])
             if staff_user not in appointment_type.staff_user_ids:
                 raise NotFound()
             if staff_user and not staff_user.partner_id.calendar_verify_availability(date_start, date_end):
@@ -406,19 +415,6 @@ class HairByNingAppointmentController(AppointmentController):
                 guests = request.env['calendar.event'].sudo()._find_or_create_partners(guest_emails_str)
 
         customer = self._get_customer_partner()
-
-
-        # considering phone and email are mandatory
-#        new_customer = not (customer.email) or not (customer.phone)
-#        if not new_customer and customer.email != email and customer.email_normalized != email_normalize(email):
-#            new_customer = True
-#        if not new_customer and not customer.phone:
-#            new_customer = True
-#        if not new_customer:
-#            customer_phone_fmt = customer._phone_format(fname="phone")
-#            input_country = self._get_customer_country()
-#            input_phone_fmt = phone_validation.phone_format(phone, input_country.code, input_country.phone_code, force_format="E164", raise_exception=False)
-#            new_customer = customer.phone != phone and customer_phone_fmt != input_phone_fmt
 
         new_customer = not (customer.exists())
 
@@ -483,7 +479,7 @@ class HairByNingAppointmentController(AppointmentController):
             capacity_to_assign = asked_capacity
             i = 0
             for resource in resources:
-                resource_remaining_capacity = resources_remaining_capacity.get(resource)
+                resource_remaining_capacity =  appointment_type._get_resources_remaining_capacity(resources, date_start, date_end, with_linked_resources=False)
                 new_capacity_reserved = min(resource_remaining_capacity, capacity_to_assign, resource.capacity)
                 capacity_to_assign -= new_capacity_reserved
                 booking_line_values.append({
@@ -528,7 +524,7 @@ class HairByNingAppointmentController(AppointmentController):
                 appointment_invite, guests, name, customer, staff_user, date_start, date_end
             ),
         })
-        timezone =pytz.timezone(request.session.get('timezone'))
+        timezone =pytz.timezone(request.session.get('timezone', 'Asia/Bangkok'))
         data = {
             'total_price': event.total_price,
             'deposit_amount': event.deposit_amount,

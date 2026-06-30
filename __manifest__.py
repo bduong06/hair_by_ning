@@ -10,7 +10,7 @@
 Allow clients to Schedule Appointments through the Portal
     """,
     'depends': ['base', 'calendar', 'web', 'resource', 'web_enterprise', 'web_gantt', 'appointment', 'mail','account_payment', 
-    'sale', 'sale_loyalty','account', 'point_of_sale'],
+    'sale', 'sale_loyalty','account' ],
     'installable': True,
     'assets': {
         'web.assets_backend': [
