@@ -5,6 +5,7 @@ import logging
 from odoo import api, fields, models, _
 from odoo.modules.registry import Registry
 from odoo import api, fields, models, _, SUPERUSER_ID
+from odoo.tools import config
 from odoo import _
 
 _logger = logging.getLogger(__name__)
@@ -24,7 +25,7 @@ class AccountMove(models.Model):
             for line in move.invoice_line_ids:
                 if not line.is_downpayment:
                     for sale_line in line.sale_line_ids:
-                        if sale_line.order_id.amount_unpaid == 0.0:
+                        if sale_line.amount_to_invoice == 0.0: 
                             event_id = self.env['calendar.event'].sudo().search([('sale_order_id', '=', sale_line.order_id.id)])
                             event_id.write({'appointment_status': 'attended'})
                             self._send_after_booking_confirmation(event_id)
@@ -50,9 +51,9 @@ class AccountMove(models.Model):
     @api.model
     def _send_after_booking_confirmation(self, event_id):
         partner_id = self.partner_id
-        if partner_id.line_user_id:
-            msg_account_id = self.env['line_chat.account'].sudo().search([('platform', '=', 'line_chat')], limit=1)
-        elif partner_id.mm_user_id:
-            msg_account_id = self.env['meta_messenger.account'].sudo().search([('platform', '=', 'meta_messenger')], limit=1)
+        if partner_id.line_user_id:  #type: ignore
+            msg_account_id = self.env['line_chat.account'].sudo().search([('platform', '=', 'line_chat')], limit=1) #type: ignore
+        elif partner_id.mm_user_id: #type: ignore
+            msg_account_id = self.env['meta_messenger.account'].sudo().search([('platform', '=', 'meta_messenger')], limit=1) #type: ignore
 
-        msg_account_id.send_after_booking_confirmation(self, event_id)
+        msg_account_id.send_after_booking_confirmation(self, event_id) #type: ignore

@@ -1,29 +1,10 @@
 # -*- coding: utf-8 -*-
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
-import uuid
 import logging
-import json
-from datetime import datetime, timedelta
-from markupsafe import Markup
-
-from odoo import _, api, Command, fields, models, SUPERUSER_ID
+from odoo import _, api, fields, models, SUPERUSER_ID
 from odoo.exceptions import ValidationError
-from odoo.tools.mail import email_normalize, email_split_tuples, html_sanitize, is_html_empty, plaintext2html
-from odoo.osv import expression
-from odoo.addons.appointment.utils import invert_intervals
-from odoo.addons.resource.models.utils import Intervals, timezone_datetime
-from odoo.tools import (
-    create_index,
-    float_is_zero,
-    format_amount,
-    format_date,
-    is_html_empty,
-    SQL,
-)
-from odoo.http import request
-from odoo.tools.mail import html_keep_url
-from lxml import etree
+from odoo.tools import config
 
 _logger = logging.getLogger(__name__)
 
@@ -193,8 +174,8 @@ class CalendarEvent(models.Model):
                             # Scan for overlaps against the extended duration
                             overlapping_booking = self.env['calendar.event'].sudo().search([
                                 ('resource_ids', '=', chair.id),
-                                ('start', '<', fields.Datetime.to_string(stop_date)),
-                                ('stop', '>', fields.Datetime.to_string(start_date)),
+                                ('start', '<', fields.Datetime.to_string(stop_date)), #type: ignore
+                                ('stop', '>', fields.Datetime.to_string(start_date)), #type: ignore
                             ], limit=1)
                             
                             if not overlapping_booking:
@@ -254,7 +235,7 @@ class CalendarEvent(models.Model):
 
         #create and post down payment invoice
         action_values = down_payment_wizard.create_invoices()
-        dp_invoice = self.env['account.move'].browse(action_values['res_id'])
+        dp_invoice = self.env['account.move'].browse(action_values['res_id']) #type: ignore
         dp_invoice.action_post()
 
         # 3. Register a payment for the down payment invoice
@@ -282,8 +263,8 @@ class CalendarEvent(models.Model):
         )
         action = down_payment_wizard.create_invoices()
         invoice_ids = action.get('res_id') or action.get('domain',[('id','in',[])])[0][2]
-        final_invoices = order.env['account.move'].browse(invoice_ids)
-        invoice_url = None
+        final_invoices = order.env['account.move'].browse(invoice_ids)  #type: ignore
+        invoice_url = ''
         for invoice in final_invoices:
             if invoice.state == 'draft':
                 invoice.write({
@@ -292,15 +273,16 @@ class CalendarEvent(models.Model):
                 })
                 invoice_url = f"/inv/{invoice.id}"
 
-        uri = 'https://hairbyning.com' + invoice_url
+        base_url = config.get("base_url", "https://hairbyning.com")
+        uri = f"{base_url}/{invoice_url}"
 
         # 4. Link it back to the booking
         self.sale_order_id = order.id
         self.appointment_status = 'booked'
         
         attendee = self.env['calendar.attendee'].search([('event_id', '=', self.id)])
-        if attendee.partner_id.line_user_id or attendee.partner_id.mm_channel_count:
-            attendee._send_appointment_confirmation(uri)
+        if attendee.partner_id.line_user_id or attendee.partner_id.mm_channel_count:  #type: ignore
+            attendee._send_appointment_confirmation(uri) #type: ignore
 
         # Log to chatter so the admin sees it
         self.message_post(body=f"✅ Deposit Order {order.name} created.")
