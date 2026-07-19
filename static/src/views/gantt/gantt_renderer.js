@@ -17,30 +17,38 @@ patch(AppointmentBookingGanttRenderer.prototype, {
      */
    setup() {
         super.setup();
-        const { slotMinTime, slotMaxTime } = this.model.metaData;
+        const { slotMinTime, slotMaxTime } = this.metaData;
         this.model.searchParams.context.default_appointment_status = 'request';
         this.model.searchParams.context.default_name = 'default_name';
         this.hideNonBusinessHours =  (slotMinTime && slotMaxTime) ? true : false;
+        if(this.hideNonBusinessHours){
+            this._rebuildMetaData();
+        }
     },
-    computeDerivedParams() {
-        const { scale } = this.model.metaData;
+    async computeDerivedParams() {
+        const { scale } = this.metaData;
         const { interval } = scale;
         super.computeDerivedParams();
-        if( this.hideNonBusinessHours && interval === 'hour'){
-            const { globalStart, globalStop, startDate, stopDate } = this.model.metaData;
-            const globalStartDate = localStartOf(globalStart, interval, this.model.metaData);
-            const globalStopDate = localStartOf(globalStop, interval, this.model.metaData);
+        if (this.hideNonBusinessHours && interval === 'hour'){
+            let focusDate, groupBy;
+            let context = this.props.model.searchParams.context;
+            if (context.focusDate && context.groupBy) {
+                ({ focusDate, groupBy } = context);
+                const searchParams = {
+                    focusDate: localStartOf(DateTime.fromISO(focusDate), interval, this.metaData),
+                    groupBy: groupBy,
+                }
+                await this.model._buildMetaData(searchParams);
+            } 
+            const { globalStart, globalStop, startDate, stopDate } = this.metaData;
+            const globalStartDate = localStartOf(globalStart, interval, this.metaData);
+            const globalStopDate = localStartOf(globalStop, interval, this.metaData);
 
-            this.columnCount = diffColumn(globalStartDate, globalStopDate, interval, this.model.metaData);
-
-            this.model.metaData.globalStart = globalStartDate;
-            this.model.metaData.globalStop = globalStopDate;
-            this.model.metaData.startDate = localStartOf(startDate, interval, this.model.metaData);
-            this.model.metaData.stopDate = localStartOf(stopDate, interval, this.model.metaData);
+            this.columnCount = diffColumn(globalStartDate, globalStopDate, interval, this.metaData);
         } 
     },
     computeVisibleColumns() {
-        const { scale } = this.model.metaData;
+        const { scale } = this.metaData;
         if(!this.hideNonBusinessHours || scale.interval != 'hour'){
             super.computeVisibleColumns();
         } else {
@@ -50,9 +58,9 @@ patch(AppointmentBookingGanttRenderer.prototype, {
             this.subColumns = [];
             this.coarseGridCols = {
                 1: true,
-                [this.columnCount * this.model.metaData.scale.cellPart + 1]: true,
+                [this.columnCount * this.metaData.scale.cellPart + 1]: true,
             };
-            const { globalStart, globalStop } = this.model.metaData;
+            const { globalStart, globalStop } = this.metaData;
             const { cellPart, interval, unit } = scale;
 
             const now = DateTime.local();
@@ -62,10 +70,10 @@ patch(AppointmentBookingGanttRenderer.prototype, {
 
             const groupsLeftBound = DateTime.max(
                 globalStart,
-                localStartOf(datePlus(globalStart, firstIndex, interval, this.model.metaData), unit, this.model.metaData)
+                localStartOf(datePlus(globalStart, firstIndex, interval, this.metaData), unit, this.metaData)
             );
             const groupsRightBound = DateTime.min(
-                localEndOf(datePlus(globalStart, lastIndex, interval, this.model.metaData), unit, this.model.metaData),
+                localEndOf(datePlus(globalStart, lastIndex, interval, this.metaData), unit, this.metaData),
                 globalStop
             );
             let currentGroup = null;
@@ -95,11 +103,11 @@ patch(AppointmentBookingGanttRenderer.prototype, {
                     this.coarseGridCols[col + i] = true;
                 }
 
-                const groupStart = localStartOf(start, unit, this.model.metaData);
+                const groupStart = localStartOf(start, unit, this.metaData);
                 if (!currentGroup || !groupStart.equals(currentGroup.start)) {
                     const groupId = `__group__${this.columnsGroups.length + 1}`;
                     const startingBound = DateTime.max(groupsLeftBound, groupStart);
-                    const endingBound = DateTime.min(groupsRightBound, localEndOf(groupStart, unit, this.model.metaData));
+                    const endingBound = DateTime.min(groupsRightBound, localEndOf(groupStart, unit, this.metaData));
                     const [groupFirstCol, groupLastCol] = this.getGridColumnFromDates(
                         startingBound,
                         endingBound
@@ -118,17 +126,17 @@ patch(AppointmentBookingGanttRenderer.prototype, {
     },
     getColumnFromColNumber(col) {
         let column;
-        const { scale } = this.model.metaData;
+        const { scale } = this.metaData;
         if(!this.hideNonBusinessHours || scale.interval !== 'hour'){
             column = super.getColumnFromColNumber(col);
         } else {
             column = this.mappingColToColumn.get(col);
             if (!column) {
-                const { globalStart } = this.model.metaData;
+                const { globalStart } = this.metaData;
                 const { interval, cellPart } = scale;
                 const delta = (col - 1) % cellPart;
                 const columnIndex = ((col - 1 - delta) / cellPart);
-                const start = datePlus(globalStart, columnIndex, interval, this.model.metaData);
+                const start = datePlus(globalStart, columnIndex, interval, this.metaData);
                 const stop = start.endOf(interval);
                 column = { start, stop };
                 this.mappingColToColumn.set(col, column);
@@ -138,17 +146,17 @@ patch(AppointmentBookingGanttRenderer.prototype, {
     },
     getSubColumnFromColNumber(col) {
         let subColumn;
-        const { scale } = this.model.metaData;
+        const { scale } = this.metaData;
         if(!this.hideNonBusinessHours || scale.interval !== 'hour' ){
             subColumn = super.getSubColumnFromColNumber(col);
         } else {
             subColumn = this.mappingColToColumn.get(col);
             if (!subColumn) {
-                const { globalStart } = this.model.metaData;
+                const { globalStart } = this.metaData;
                 const { interval, cellPart, cellTime, time } = scale;
                 const delta = (col - 1) % cellPart;
                 const columnIndex = ((col - 1 - delta) / cellPart);
-                const start = datePlus(globalStart, columnIndex, interval, this.model.metaData);
+                const start = datePlus(globalStart, columnIndex, interval, this.metaData);
                 subColumn = this.makeSubColumn(start, delta, cellTime, time);
                 this.mappingColToSubColumn.set(col, subColumn);
             }
@@ -156,16 +164,16 @@ patch(AppointmentBookingGanttRenderer.prototype, {
         return subColumn;
     },
     getGridColumnFromDates(startDate, stopDate) {
-        const { scale } = this.model.metaData;
+        const { scale } = this.metaData;
         if(!this.hideNonBusinessHours || scale.interval !== 'hour'){
             return super.getGridColumnFromDates(startDate, stopDate);
         } else {
-            const { globalStart } = this.model.metaData;
+            const { globalStart } = this.metaData;
             const { cellPart, interval } = scale;
             const { column: column1, delta: delta1 } = this.getSubColumnFromDate(startDate);
             const { column: column2, delta: delta2 } = this.getSubColumnFromDate(stopDate, false);
-            const firstCol = 1 + diffColumn(globalStart, column1, interval, this.model.metaData) * cellPart + delta1;
-            const span = diffColumn(column1, column2, interval, this.model.metaData) * cellPart + delta2 - delta1;
+            const firstCol = 1 + diffColumn(globalStart, column1, interval, this.metaData) * cellPart + delta1;
+            const span = diffColumn(column1, column2, interval, this.metaData) * cellPart + delta2 - delta1;
             return [firstCol, firstCol + span];
         }
     },
@@ -189,4 +197,21 @@ patch(AppointmentBookingGanttRenderer.prototype, {
             o_gantt_readonly: row.readonly,
         };
     },
+    async _rebuildMetaData(){
+        const metaData = this.metaData;
+        const { scale } = this.metaData;
+        const { interval } = scale;
+        const params = {
+            focusDate: localStartOf(metaData.focusDate, interval, metaData),
+            startDate: localStartOf(metaData.startDate, interval, metaData),
+            stopDate: localStartOf(metaData.stopDate, interval, metaData),
+            globalStart: localStartOf(metaData.globalStart, interval, metaData),
+            globalStop: localStartOf(metaData.globalStop, interval, metaData),
+            groupBy: metaData.groupedBy,
+        }
+        await this.model._buildMetaData(params);
+    },
+    get metaData(){
+        return this.model._buildMetaData();
+    }
 });

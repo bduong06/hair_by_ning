@@ -65,6 +65,23 @@ class CalendarEvent(models.Model):
         store=True
     )
 
+    post_service_survery_sent = fields.Boolean(
+        string="Customer Satisfaction Survey",
+        default=False
+    )
+
+    post_service_survey_rating = fields.Selection(
+        selection=[
+            ('pending', 'Pending'),
+            ('unhappy', 'Unhappy'),
+            ('neutral', 'Neutral'),
+            ('happy', 'Happy'),
+        ],
+        string='Status',
+        default='pending',
+        required=True,
+    )
+
     @api.model
     def default_get(self, fields_list):
         res = super().default_get(fields_list)
@@ -280,40 +297,13 @@ class CalendarEvent(models.Model):
         self.sale_order_id = order.id
         self.appointment_status = 'booked'
         
-        attendee = self.env['calendar.attendee'].search([('event_id', '=', self.id)])
-        if attendee.partner_id.line_user_id or attendee.partner_id.mm_channel_count:  #type: ignore
-            attendee._send_appointment_confirmation(uri) #type: ignore
+        for attendee in self.attendee_ids:
+            attendee.send_appointment_confirmation(uri) #type: ignore
 
         # Log to chatter so the admin sees it
         self.message_post(body=f"✅ Deposit Order {order.name} created.")
 
         return True
-
-    def action_checkout_booking(self):
-        self.ensure_one()
-
-        base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url')
-        
-        res_id = None
-        for invoice in self.invoice_ids:
-            if invoice.state == 'draft':
-                res_id = invoice.id
-
-        return {
-            'type': 'ir.actions.act_window',
-            'res_model': 'account.move',  # Target model
-            'name': 'Open',  # Target model
-            'view_mode': 'form',
-            'view_type': 'form',
-            'res_id': res_id,
-            'view_id': self.env.ref('account.view_move_form').id, # Specific View
-            'target': 'new', # Key to open in a dialog
-            'flags': {'initial_mode': 'view'}, # Opens in readonly
-            'context': {
-                'default_move_type': 'out_invoice',
-                # Add default values here
-            },
-        }
 
     @api.model
     def get_attribute_name(self, appointment_type_id):

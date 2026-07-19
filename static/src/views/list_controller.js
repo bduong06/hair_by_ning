@@ -57,7 +57,6 @@ patch(ListController.prototype, {
                 {
                     title,
                     resModel,
-//                    viewId,
                     resId,
                     size: this.props.size,
                     mode: canEdit ? "edit" : "readonly",
@@ -65,7 +64,6 @@ patch(ListController.prototype, {
                     removeRecord,
                 },
                 {
-//                    ...options,
                     onClose: () => {
                         this.closeDialog = null;
                         this.model.load();

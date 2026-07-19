@@ -40,7 +40,7 @@ patch(Many2ManyTagsFieldColorEditable.prototype, {
                 resId: record.resId,
                 context: this.props.context,
                 preventCreate: true,
-                preventEdit: true,
+                preventEdit: false,
                 removeRecord,
             },
             {

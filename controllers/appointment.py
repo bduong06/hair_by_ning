@@ -6,7 +6,7 @@ import requests
 from babel.dates import format_datetime, format_date, format_time
 from dateutil.relativedelta import relativedelta
 from odoo import http, Command, fields
-from odoo.http import request
+from odoo.http import request, Response
 import logging
 from odoo.addons.appointment.controllers.appointment import AppointmentController
 from werkzeug.exceptions import Forbidden, NotFound
@@ -43,7 +43,7 @@ class HairByNingAppointmentController(AppointmentController):
 
 
     @http.route(['/hbn/appointment', '/hbn/appointment/page/<int:page>'],
-           type='json', auth="public", website=True, sitemap=True)
+           type='json', auth="public", website=False, sitemap=True)
     def appointment_type_list(self, page=1, **kwargs):
         """
         Display the appointments to choose (the display depends of a custom option called 'Card Design')
@@ -82,7 +82,7 @@ class HairByNingAppointmentController(AppointmentController):
         }
 
     @http.route(['/hbn/appointment/appointment_type'],
-           type='json', auth="public", website=True, sitemap=True)
+           type='json', auth="public", website=False, sitemap=True)
     def appointment_type_time_slots(self, **kwargs):
         """
         This route renders the appointment page: It first computes a dict of values useful for all potential
@@ -224,7 +224,7 @@ class HairByNingAppointmentController(AppointmentController):
         }
 
     @http.route(['/hbn/appointment/info'],
-            type='json', auth="public", website=True, sitemap=False)
+            type='json', auth="public", website=False, sitemap=False)
     def appointment_type_form(self, **kwargs):
         """
         Render the form to get information about the user for the appointment
@@ -311,7 +311,7 @@ class HairByNingAppointmentController(AppointmentController):
         }
 
     @http.route(['/hbn/appointment/submit'],
-                type='json', auth="public", website=True)
+                type='json', auth="public", website=False)
     def json_appointment_form_submit(self, **kwargs):
         """
         Create the event for the appointment and redirect on the validation page with a summary of the appointment.
@@ -499,6 +499,77 @@ class HairByNingAppointmentController(AppointmentController):
             appointment_type, date_start, date_end, duration, answer_input_values, name,
             customer, appointment_invite, guests, staff_user, asked_capacity, booking_line_values
         )
+
+    @http.route(['/hbn/appointment/payment/confirm/<int:partner_id>'],
+                type='json', auth="public", website=False)
+    def json_payment_confirm(self, partner_id):
+        """
+        Confirm appointment
+
+        :param partner_id: Customer id
+        """
+        event_id = request.env['calendar.event'].sudo().search([('partner_ids', 'in', partner_id)], order='create_date desc', limit=1)
+
+        try:
+        
+            if event_id.appointment_status == 'request':
+                event_id.action_make_deposit()
+
+            if event_id.appointment_status == 'attended':
+                attendee = request.env['calendar.attendee'].sudo().search([('event_id', '=', event_id.id)])
+                #attendee.send_booking_checkout_confirmation() #type: ignore
+                attendee.send_after_service_message() #type: ignore
+
+        except requests.RequestException as e:
+            _logger.error("json_payment_confirm: Error confirming payment: %s", str(e))
+
+        return Response("OK", status=200, mimetype='text/plain')
+
+    @http.route(['/hbn/appointment/confirm/<int:event_id>'],
+                type='http', auth="public", website=False)
+    def appointment_confirm(self, event_id, **kwargs):
+        """
+        Confirm appointment
+
+        :param event_id: Calendar event
+        """
+        appointment = request.env['calendar.event'].sudo().browse(event_id)
+        result = appointment.action_make_deposit()
+        if not result:
+            _logger.error("json_appointment_confirm: unknown error")
+
+        # 2. Return an HTML script back to the hidden frame.
+        # 'window.parent' targets the main Odoo window.
+        # In Odoo 18, location.reload() cleanly refreshes the open view data.
+        return """
+            <script type="text/javascript">
+                if (window.parent) {
+                    window.parent.location.reload();
+                }
+            </script>
+        """
+
+    @http.route(['/hbn/appointment/checkout/confirm/<int:event_id>'],
+                type='http', auth="public", website=False)
+    def appointment_checkout_confirm(self, event_id, **kwargs):
+        """
+        Confirm appointment
+
+        :param event_id: Calendar event
+        """
+        attendee = request.env['calendar.attendee'].sudo().search([('event_id', '=', event_id)])
+        attendee.send_booking_checkout_confirmation() #type: ignore
+
+        # 2. Return an HTML script back to the hidden frame.
+        # 'window.parent' targets the main Odoo window.
+        # In Odoo 18, location.reload() cleanly refreshes the open view data.
+        return """
+            <script type="text/javascript">
+                if (window.parent) {
+                    window.parent.location.reload();
+                }
+            </script>
+        """
 
     def _json_handle_appointment_form_submission(
         self, appointment_type,

@@ -28,7 +28,7 @@ class AccountMove(models.Model):
                         if sale_line.amount_to_invoice == 0.0: 
                             event_id = self.env['calendar.event'].sudo().search([('sale_order_id', '=', sale_line.order_id.id)])
                             event_id.write({'appointment_status': 'attended'})
-                            self._send_after_booking_confirmation(event_id)
+                            self._send_conversion_event(event_id)
         return res
 
     @api.depends('name')
@@ -49,11 +49,7 @@ class AccountMove(models.Model):
                 record.display_name = 'Not Paid'
 
     @api.model
-    def _send_after_booking_confirmation(self, event_id):
-        partner_id = self.partner_id
-        if partner_id.line_user_id:  #type: ignore
-            msg_account_id = self.env['line_chat.account'].sudo().search([('platform', '=', 'line_chat')], limit=1) #type: ignore
-        elif partner_id.mm_user_id: #type: ignore
-            msg_account_id = self.env['meta_messenger.account'].sudo().search([('platform', '=', 'meta_messenger')], limit=1) #type: ignore
+    def _send_conversion_event(self, event_id):
 
-        msg_account_id.send_after_booking_confirmation(self, event_id) #type: ignore
+        attendee = self.env['calendar.attendee'].search([('event_id', '=', event_id.id)])
+        attendee.send_conversion_api_event() #type: ignore

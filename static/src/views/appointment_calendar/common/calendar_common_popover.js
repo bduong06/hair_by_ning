@@ -41,7 +41,6 @@ patch(CalendarCommonPopover.prototype, {
                 {
                     title,
                     resModel,
-//                    viewId,
                     resId,
                     size: this.props.size,
                     mode: canEdit ? "edit" : "readonly",
@@ -49,7 +48,6 @@ patch(CalendarCommonPopover.prototype, {
                     removeRecord,
                 },
                 {
-//                    ...options,
                     onClose: () => {
                         this.closeDialog = null;
                         this.props.model.load();

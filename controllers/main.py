@@ -25,88 +25,7 @@ import base64
 
 _logger = logging.getLogger(__name__)
 
-"""
-class AuthSignupHome(AuthSignupHome):
-    @http.route('/web/signup', type='http', auth='public', website=True, sitemap=False)
-    def web_auth_signup(self, *args, **kw):
-        qcontext = self.get_auth_signup_qcontext()
-        if not qcontext.get('token') and not qcontext.get('signup_enabled'):
-            raise werkzeug.exceptions.NotFound()
-
-        if 'error' not in qcontext and request.httprequest.method == 'POST':
-            try:
-                self.do_signup(qcontext)
-
-                if qcontext.get('token'):
-                    user_sudo = request.env['res.users'].sudo().search([('login', '=', qcontext.get('login'))])
-                    template = request.env.ref('auth_signup.mail_template_user_signup_account_created',
-                                               raise_if_not_found=False)
-                    if user_sudo and template:
-                        template.sudo().with_context(
-                            lang=user_sudo.lang,
-                            auth_login=werkzeug.url_encode({'auth_login': user_sudo.email}),
-                        ).send_mail(user_sudo.id, force_send=True)
-                else:
-
-                    request.session.logout()
-                    user_sudo = request.env['res.users'].sudo().search([('login', '=', qcontext.get('login'))])
-                    template = request.env.ref('auth_line.mail_template_user_signup_account_activate',
-                                               raise_if_not_found=False)
-                    if user_sudo and template:
-                        template.sudo().with_context(
-                            lang=user_sudo.lang,
-                            auth_login=werkzeug.url_encode({'auth_login': user_sudo.email}),
-                        ).send_mail(user_sudo.id, force_send=True)
-                        user_sudo.set_inactivate()
-                    return werkzeug.utils.redirect('/web/login', 303)
-                return self.web_login(*args, **kw)
-            except UserError as e:
-                qcontext['error'] = e.name or e.value
-            except (SignupError, AssertionError) as e:
-                if request.env["res.users"].sudo().search([("login", "=", qcontext.get("login"))]):
-                    qcontext["error"] = _("Another user is already registered using this email address.")
-                else:
-                    _logger.error("%s", e)
-                    qcontext['error'] = _("Could not create a new account.")
-
-        response = request.render('auth_signup.signup', qcontext)
-        response.headers['X-Frame-Options'] = 'DENY'
-        return response
-
-
-class OAuthLogin(OAuthLogin):
-    def list_providers(self):
-        try:
-            providers = request.env['auth.oauth.provider'].sudo().search_read([('enabled', '=', True)])
-        except Exception:
-            providers = []
-        for provider in providers:
-            return_url = request.httprequest.url_root + 'auth_oauth/signin'
-            state = self.get_state(provider)
-            if provider['is_line_oauth'] == True:
-                return_url = return_url.replace('http:', 'https:')
-                params = dict(
-                    response_type='code',
-                    client_id=provider['client_id'],
-                    redirect_uri=return_url,
-                    scope=provider['scope'],
-                    state=json.dumps(state),
-                )
-            else:
-                params = dict(
-                    response_type='token',
-                    client_id=provider['client_id'],
-                    redirect_uri=return_url,
-                    scope=provider['scope'],
-                    state=json.dumps(state),
-                    nonce=base64.urlsafe_b64encode(os.urandom(16)),
-                    # nonce=base64.urlsafe_b64encode(os.urandom(16)),
-                )
-            provider['auth_link'] = "%s?%s" % (provider['auth_endpoint'], werkzeug.urls.url_encode(params))
-        return providers
-"""
-
-class OAuthController(OAuthController):
+class HBNOAuthController(OAuthController):
     @http.route('/hbn/auth_oauth/signin', type='json', auth='none')
     @fragment_to_query_string
     def json_signin(self, **kw):
@@ -121,12 +40,12 @@ class OAuthController(OAuthController):
 
         try:
 
-            _, login, key = request.env['res.users'].with_user(SUPERUSER_ID).auth_oauth(provider, kw)
+            _, login, key = request.env['res.users'].with_user(SUPERUSER_ID).auth_oauth(provider, kw) #type: ignore
             request.env.cr.commit()
 
             action = state.get('a')
             menu = state.get('m')
-            redirect = werkzeug.urls.url_unquote_plus(state['r']) if state.get('r') else False
+            redirect = werkzeug.urls.url_unquote_plus(state['r']) if state.get('r') else False #type: ignore
             url = '/odoo'
             if redirect:
                 url = redirect
@@ -157,14 +76,3 @@ class OAuthController(OAuthController):
         return {
             'error': error
         }
-
-
-"""
-class LineController(Controller):
-    @http.route(['/web/activate'], auth='public')
-    def active_new_user(self, **kwargs):
-        if 'auth_login' in kwargs:
-            user = request.env['res.users'].sudo().search([('login', '=', kwargs['auth_login'])])
-            user.write({'activate': True})
-        return werkzeug.utils.redirect('/web/login', 303)
-"""
