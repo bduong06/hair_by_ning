@@ -305,6 +305,40 @@ class CalendarEvent(models.Model):
 
         return True
 
+    def action_create_invoice(self):
+        self.ensure_one()
+        
+        # 1. Prevent duplicate orders
+        if self.sale_order_id:
+            return True
+
+        order_line = []
+        for booking_line in self.booking_line_ids:
+            order_line.append((0, 0, {
+                'product_id': booking_line.product_variant_id.id,
+                'name': booking_line.display_name,
+                'product_uom_qty': booking_line.capacity_reserved,
+                'price_unit': booking_line.product_variant_id.lst_price,
+            }))
+
+        # 3. Create the Sales Order for the service booking
+        order = self.env['sale.order'].create({
+            'partner_id': self.partner_ids.id,
+            'origin': self.name,
+            'order_line': order_line,
+        })
+        order.action_confirm()
+        draft_invoice = order._create_invoices()
+
+        self.sale_order_id = order.id
+        self.appointment_status = 'booked'
+        
+        # Log to chatter so the admin sees it
+        self.message_post(body=f"✅ Draft Invoice {draft_invoice.name} created.")
+
+        return True
+
+
     @api.model
     def get_attribute_name(self, appointment_type_id):
         appointment = self.env['appointment.type'].sudo().browse(appointment_type_id)

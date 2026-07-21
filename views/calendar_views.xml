@@ -29,13 +29,18 @@
                 <group invisible="sale_order_id or not booking_id">
                     <div class="o_row text-end">
                         <label class="oe_inline" for="deposit_amount" string="Deposit"/>
-                        <div style="max-width: 90px;">
+                        <div style="max-width: 50px;">
                             <field name="deposit_amount" nolabel="1"/>
                         </div>
                         <button name="action_make_deposit" 
-                            string="Pay Deposit"
+                            string="Deposit"
                             type="object" 
-                            class="oe_inline btn-primary oe_highlight ms-3"
+                            class="oe_inline btn-primary oe_highlight ms-2"
+                        />
+                        <button name="action_create_invoice" 
+                            string="Invoice"
+                            type="object" 
+                            class="oe_inline btn-primary oe_highlight ms-2"
                         />
                     </div>
                 </group>
@@ -47,7 +52,7 @@
                             context="{
                                 'default_move_type': context.get('default_move_type'),
                                 'default_display_type': 'product',
-                            }" readonly="1">
+                            }" readonly="0">
                             <list>
                                 <field name="currency_id" column_invisible="1"/>
                                 <field name="name" string="Number"/>
