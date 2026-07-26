@@ -1,0 +1,392 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+# 	* hair_by_ning
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 18.0+e\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-07-26 11:48+0000\n"
+"PO-Revision-Date: 2026-07-26 11:48+0000\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: \n"
+
+#. module: hair_by_ning
+#: model_terms:ir.ui.view,arch_db:hair_by_ning.calendar_event_view_form_gantt_booking_hair_by_ning
+msgid ""
+"<i class=\"fa fa-long-arrow-right mx-2\" aria-label=\"Until Icon\" "
+"title=\"Arrow\"/>"
+msgstr ""
+
+#. module: hair_by_ning
+#: model_terms:ir.ui.view,arch_db:hair_by_ning.calendar_event_view_form_gantt_booking_hair_by_ning
+msgid "<span class=\"me-1\">Attendees marked as busy at the selected time</span>"
+msgstr ""
+
+#. module: hair_by_ning
+#: model_terms:ir.ui.view,arch_db:hair_by_ning.calendar_event_view_form_gantt_booking_hair_by_ning
+msgid ""
+"<span class=\"me-1\">You are scheduling a booking outside the available "
+"hours of</span>"
+msgstr ""
+
+#. module: hair_by_ning
+#: model_terms:ir.ui.view,arch_db:hair_by_ning.calendar_event_view_form_gantt_booking_hair_by_ning
+msgid "<span> hours</span>"
+msgstr ""
+
+#. module: hair_by_ning
+#: model_terms:ir.ui.view,arch_db:hair_by_ning.calendar_event_view_form_gantt_booking_hair_by_ning
+msgid "<span>people</span>"
+msgstr ""
+
+#. module: hair_by_ning
+#: model:ir.model,name:hair_by_ning.model_appointment_booking_line
+msgid "Appointment Booking Line"
+msgstr "ช่องทางการจองนัดหมาย"
+
+#. module: hair_by_ning
+#. odoo-javascript
+#: code:addons/hair_by_ning/static/src/components/many2many_tags/many2many_tags_field.js:0
+#: code:addons/hair_by_ning/static/src/views/appointment_calendar/appointment_calendar_controller.js:0
+#: code:addons/hair_by_ning/static/src/views/appointment_calendar/common/calendar_common_popover.js:0
+#: code:addons/hair_by_ning/static/src/views/list_controller.js:0
+msgid "Are you sure to delete this record?"
+msgstr ""
+
+#. module: hair_by_ning
+#: model_terms:ir.ui.view,arch_db:hair_by_ning.calendar_event_view_form_gantt_booking_hair_by_ning
+msgid ""
+"Are you sure you want to delete this Booking? Once it's gone, it's gone for "
+"good!"
+msgstr ""
+
+#. module: hair_by_ning
+#: model:ir.model.fields,field_description:hair_by_ning.field_calendar_event__booking_id
+msgid "Booking ID"
+msgstr "รหัสการจอง"
+
+#. module: hair_by_ning
+#: model_terms:ir.ui.view,arch_db:hair_by_ning.calendar_event_view_form_gantt_booking_hair_by_ning
+msgid "Booking Name"
+msgstr ""
+
+#. module: hair_by_ning
+#: model_terms:ir.ui.view,arch_db:hair_by_ning.calendar_event_view_form_gantt_booking_hair_by_ning
+msgid "Bookings"
+msgstr ""
+
+#. module: hair_by_ning
+#: model:ir.model,name:hair_by_ning.model_calendar_event
+msgid "Calendar Event"
+msgstr "ปฎิทินอีเวนต์"
+
+#. module: hair_by_ning
+#: model:ir.model.fields,field_description:hair_by_ning.field_account_bank_statement_line__color
+#: model:ir.model.fields,field_description:hair_by_ning.field_account_move__color
+msgid "Color Index"
+msgstr ""
+
+#. module: hair_by_ning
+#: model:ir.model.fields,field_description:hair_by_ning.field_calendar_event__company_currency_id
+msgid "Company Currency"
+msgstr ""
+
+#. module: hair_by_ning
+#. odoo-javascript
+#: code:addons/hair_by_ning/static/src/components/many2many_tags/many2many_tags_field.js:0
+#: code:addons/hair_by_ning/static/src/views/appointment_calendar/appointment_calendar_controller.js:0
+#: code:addons/hair_by_ning/static/src/views/appointment_calendar/common/calendar_common_popover.js:0
+#: code:addons/hair_by_ning/static/src/views/list_controller.js:0
+msgid "Create"
+msgstr ""
+
+#. module: hair_by_ning
+#: model_terms:ir.ui.view,arch_db:hair_by_ning.calendar_event_view_tree_booking_inherit_hair_by_ning
+msgid "Customer"
+msgstr ""
+
+#. module: hair_by_ning
+#: model:ir.model.fields,field_description:hair_by_ning.field_calendar_event__post_service_survey_sent
+msgid "Customer Satisfaction Survey"
+msgstr "แบบสำรวจความพึงพอใจของลูกค้า"
+
+#. module: hair_by_ning
+#: model_terms:ir.ui.view,arch_db:hair_by_ning.calendar_event_view_form_gantt_booking_hair_by_ning
+msgid "Date"
+msgstr ""
+
+#. module: hair_by_ning
+#: model_terms:ir.ui.view,arch_db:hair_by_ning.calendar_event_view_form_gantt_booking_hair_by_ning
+msgid "Delete Booking"
+msgstr ""
+
+#. module: hair_by_ning
+#: model_terms:ir.ui.view,arch_db:hair_by_ning.calendar_event_view_form_gantt_booking_inherit_hair_by_ning
+msgid "Deposit"
+msgstr ""
+
+#. module: hair_by_ning
+#: model:ir.model.fields,field_description:hair_by_ning.field_calendar_event__deposit_amount
+#: model_terms:ir.ui.view,arch_db:hair_by_ning.view_event_view_form_inherit_hair_by_ning
+msgid "Deposit Amount"
+msgstr "จำนวนเงินฝาก"
+
+#. module: hair_by_ning
+#: model_terms:ir.ui.view,arch_db:hair_by_ning.calendar_event_view_form_gantt_booking_hair_by_ning
+msgid "Discard"
+msgstr ""
+
+#. module: hair_by_ning
+#: model_terms:ir.ui.view,arch_db:hair_by_ning.calendar_event_view_form_gantt_booking_hair_by_ning
+msgid "Duration"
+msgstr ""
+
+#. module: hair_by_ning
+#. odoo-javascript
+#: code:addons/hair_by_ning/static/src/views/calendar/calendar_model.js:0
+msgid "Everybody's calendars"
+msgstr ""
+
+#. module: hair_by_ning
+#. odoo-javascript
+#: code:addons/hair_by_ning/static/src/views/calendar/calendar_model.js:0
+msgid "Everything"
+msgstr ""
+
+#. module: hair_by_ning
+#: model_terms:ir.ui.view,arch_db:hair_by_ning.calendar_event_view_form_gantt_booking_hair_by_ning
+msgid "Extra Comments..."
+msgstr ""
+
+#. module: hair_by_ning
+#: model_terms:ir.ui.view,arch_db:hair_by_ning.view_event_view_form_inherit_hair_by_ning
+msgid "Financials"
+msgstr ""
+
+#. module: hair_by_ning
+#: model:ir.model.fields.selection,name:hair_by_ning.selection__ir_ui_view__type__gantt
+msgid "Gantt"
+msgstr "แกนต์"
+
+#. module: hair_by_ning
+#. odoo-python
+#: code:addons/hair_by_ning/models/ir_ui_view.py:0
+msgid "Gantt child can only be field or template, got %s"
+msgstr ""
+
+#. module: hair_by_ning
+#. odoo-python
+#: code:addons/hair_by_ning/models/ir_ui_view.py:0
+msgid "Gantt must have a 'date_start' attribute"
+msgstr ""
+
+#. module: hair_by_ning
+#. odoo-python
+#: code:addons/hair_by_ning/models/ir_ui_view.py:0
+msgid "Gantt must have a 'date_stop' attribute"
+msgstr ""
+
+#. module: hair_by_ning
+#. odoo-python
+#: code:addons/hair_by_ning/models/ir_ui_view.py:0
+msgid ""
+"Gantt must have a 'dependency_inverted_field' attribute once the "
+"'dependency_field' is specified"
+msgstr ""
+
+#. module: hair_by_ning
+#. odoo-python
+#: code:addons/hair_by_ning/models/ir_ui_view.py:0
+msgid "Gantt view can contain only one templates tag"
+msgstr ""
+
+#. module: hair_by_ning
+#: model:ir.model.fields.selection,name:hair_by_ning.selection__calendar_event__post_service_survey_rating__happy
+msgid "Happy"
+msgstr "มีความสุข"
+
+#. module: hair_by_ning
+#. odoo-python
+#: code:addons/hair_by_ning/models/ir_ui_view.py:0
+msgid ""
+"Invalid attributes (%(invalid_attributes)s) in gantt view. Attributes must "
+"be in (%(valid_attributes)s)"
+msgstr ""
+
+#. module: hair_by_ning
+#. odoo-python
+#: code:addons/hair_by_ning/models/ir_ui_view.py:0
+msgid "Invalid default_range '%s' in gantt"
+msgstr ""
+
+#. module: hair_by_ning
+#. odoo-python
+#: code:addons/hair_by_ning/models/ir_ui_view.py:0
+msgid "Invalid default_scale '%s' in gantt"
+msgstr ""
+
+#. module: hair_by_ning
+#. odoo-python
+#: code:addons/hair_by_ning/models/ir_ui_view.py:0
+msgid "Invalid display_mode '%s' in gantt"
+msgstr ""
+
+#. module: hair_by_ning
+#. odoo-python
+#: code:addons/hair_by_ning/models/ir_ui_view.py:0
+msgid "Invalid slotMaxTime value '%s' in gantt"
+msgstr ""
+
+#. module: hair_by_ning
+#. odoo-python
+#: code:addons/hair_by_ning/models/ir_ui_view.py:0
+msgid "Invalid slotMinTime value '%s' in gantt"
+msgstr ""
+
+#. module: hair_by_ning
+#: model_terms:ir.ui.view,arch_db:hair_by_ning.calendar_event_view_form_gantt_booking_inherit_hair_by_ning
+msgid "Invoice"
+msgstr ""
+
+#. module: hair_by_ning
+#: model:ir.model.fields,field_description:hair_by_ning.field_calendar_event__invoice_ids
+msgid "Invoices"
+msgstr "ใบแจ้งหนี้"
+
+#. module: hair_by_ning
+#: model:ir.model,name:hair_by_ning.model_account_move
+msgid "Journal Entry"
+msgstr "รายการสมุดรายวัน"
+
+#. module: hair_by_ning
+#: model_terms:ir.ui.view,arch_db:hair_by_ning.view_event_view_form_inherit_hair_by_ning
+msgid "Make Deposit"
+msgstr ""
+
+#. module: hair_by_ning
+#: model:ir.model.fields.selection,name:hair_by_ning.selection__calendar_event__post_service_survey_rating__neutral
+msgid "Neutral"
+msgstr "เป็นกลาง"
+
+#. module: hair_by_ning
+#. odoo-javascript
+#: code:addons/hair_by_ning/static/src/components/many2many_tags/many2many_tags_field.js:0
+#: code:addons/hair_by_ning/static/src/views/appointment_calendar/appointment_calendar_controller.js:0
+#: code:addons/hair_by_ning/static/src/views/appointment_calendar/common/calendar_common_popover.js:0
+#: code:addons/hair_by_ning/static/src/views/list_controller.js:0
+msgid "Open"
+msgstr ""
+
+#. module: hair_by_ning
+#: model:ir.model.fields.selection,name:hair_by_ning.selection__calendar_event__post_service_survey_rating__pending
+msgid "Pending"
+msgstr "รอดำเนินการ"
+
+#. module: hair_by_ning
+#: model:ir.model.fields,field_description:hair_by_ning.field_calendar_event__product_tmpl_id
+msgid "Product template"
+msgstr "แม่แบบผลิตภัณฑ์"
+
+#. module: hair_by_ning
+#: model_terms:ir.ui.view,arch_db:hair_by_ning.calendar_event_view_form_gantt_booking_hair_by_ning
+msgid "Remove"
+msgstr ""
+
+#. module: hair_by_ning
+#: model_terms:ir.ui.view,arch_db:hair_by_ning.calendar_event_view_form_gantt_booking_hair_by_ning
+#: model_terms:ir.ui.view,arch_db:hair_by_ning.calendar_event_view_form_gantt_booking_inherit_hair_by_ning
+msgid "Resources"
+msgstr ""
+
+#. module: hair_by_ning
+#: model:ir.model.fields,field_description:hair_by_ning.field_calendar_event__sale_order
+msgid "Sale Order"
+msgstr "ใบสั่งขาย"
+
+#. module: hair_by_ning
+#: model:ir.model.fields,field_description:hair_by_ning.field_calendar_event__sale_order_id
+msgid "Sales Order"
+msgstr "ใบสั่งขาย"
+
+#. module: hair_by_ning
+#: model_terms:ir.ui.view,arch_db:hair_by_ning.calendar_event_view_form_gantt_booking_hair_by_ning
+msgid "Save"
+msgstr ""
+
+#. module: hair_by_ning
+#: model_terms:ir.ui.view,arch_db:hair_by_ning.calendar_event_view_form_gantt_booking_hair_by_ning
+#: model_terms:ir.ui.view,arch_db:hair_by_ning.calendar_event_view_form_gantt_booking_inherit_hair_by_ning
+msgid "Select attendees..."
+msgstr ""
+
+#. module: hair_by_ning
+#: model:ir.model.fields,field_description:hair_by_ning.field_appointment_booking_line__product_variant_id
+msgid "Service"
+msgstr "บริการ"
+
+#. module: hair_by_ning
+#: model_terms:ir.ui.view,arch_db:hair_by_ning.view_event_view_form_inherit_hair_by_ning
+msgid "Service Details"
+msgstr ""
+
+#. module: hair_by_ning
+#: model:ir.model.fields,field_description:hair_by_ning.field_calendar_event__post_service_survey_rating
+#: model_terms:ir.ui.view,arch_db:hair_by_ning.calendar_event_view_form_gantt_booking_hair_by_ning
+msgid "Status"
+msgstr "สถานะ"
+
+#. module: hair_by_ning
+#. odoo-python
+#: code:addons/hair_by_ning/models/calendar_event.py:0
+msgid "There are no chairs available for this time slot"
+msgstr ""
+
+#. module: hair_by_ning
+#: model_terms:ir.ui.view,arch_db:hair_by_ning.page_404
+msgid "This page does not exist."
+msgstr ""
+
+#. module: hair_by_ning
+#: model:ir.model.fields,field_description:hair_by_ning.field_calendar_event__total_price
+msgid "Total Price"
+msgstr "ราคารวม"
+
+#. module: hair_by_ning
+#: model_terms:ir.ui.view,arch_db:hair_by_ning.calendar_event_view_form_gantt_booking_hair_by_ning
+msgid "Total Reserved"
+msgstr ""
+
+#. module: hair_by_ning
+#: model:ir.model.fields.selection,name:hair_by_ning.selection__calendar_event__post_service_survey_rating__unhappy
+msgid "Unhappy"
+msgstr "ไม่พอใจ"
+
+#. module: hair_by_ning
+#: model:ir.model.fields,field_description:hair_by_ning.field_calendar_event__product_variant_id
+msgid "Variant"
+msgstr "ตัวแปร"
+
+#. module: hair_by_ning
+#: model:ir.model.fields,field_description:hair_by_ning.field_calendar_event__variant_count
+msgid "Variants"
+msgstr "ตัวแปร"
+
+#. module: hair_by_ning
+#: model:ir.model,name:hair_by_ning.model_ir_ui_view
+msgid "View"
+msgstr "ดู"
+
+#. module: hair_by_ning
+#: model:ir.model.fields,field_description:hair_by_ning.field_ir_ui_view__type
+msgid "View Type"
+msgstr "ประเภทมุมมอง"
+
+#. module: hair_by_ning
+#: model_terms:ir.ui.view,arch_db:hair_by_ning.calendar_event_view_form_gantt_booking_hair_by_ning
+msgid "e.g. \"John Doe - Tennis Court Booking\""
+msgstr ""
