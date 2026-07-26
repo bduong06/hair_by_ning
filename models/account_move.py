@@ -53,3 +53,18 @@ class AccountMove(models.Model):
 
         attendee = self.env['calendar.attendee'].search([('event_id', '=', event_id.id)])
         attendee.send_conversion_api_event() #type: ignore
+
+    def _get_invoice_pdf_proforma(self):
+        """ Generate the Proforma of the invoice.
+        :return dict: the Proforma's data such as
+        {'filename': 'INV_2024_0001_proforma.pdf', 'filetype': 'pdf', 'content': ...}
+        """
+        self.ensure_one()
+        filename = self._get_invoice_proforma_pdf_report_filename()
+        content, report_type = self.env['ir.actions.report']._pre_render_qweb_pdf('account.account_invoices', self.ids, data={'proforma': False})
+        content_by_id = self.env['ir.actions.report']._get_splitted_report('account.account_invoices', content, report_type)
+        return {
+            'filename': filename,
+            'filetype': 'pdf',
+            'content': content_by_id[self.id],
+        }

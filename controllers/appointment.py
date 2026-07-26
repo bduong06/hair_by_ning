@@ -517,8 +517,7 @@ class HairByNingAppointmentController(AppointmentController):
 
             if event_id.appointment_status == 'attended':
                 attendee = request.env['calendar.attendee'].sudo().search([('event_id', '=', event_id.id)])
-                #attendee.send_booking_checkout_confirmation() #type: ignore
-                attendee.send_after_service_message() #type: ignore
+                attendee.send_booking_checkout_confirmation() #type: ignore
 
         except requests.RequestException as e:
             _logger.error("json_payment_confirm: Error confirming payment: %s", str(e))

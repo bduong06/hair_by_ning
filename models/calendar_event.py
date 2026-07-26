@@ -65,7 +65,7 @@ class CalendarEvent(models.Model):
         store=True
     )
 
-    post_service_survery_sent = fields.Boolean(
+    post_service_survey_sent = fields.Boolean(
         string="Customer Satisfaction Survey",
         default=False
     )
@@ -90,7 +90,7 @@ class CalendarEvent(models.Model):
             res['appointment_type_id'] = False
         return res
         
-    @api.depends('appointment_type_id')
+    @api.depends('appointment_type_id', 'booking_line_ids')
     def _compute_deposit_amount(self):
         for record in self:
             for booking_line in record.booking_line_ids:
@@ -288,10 +288,10 @@ class CalendarEvent(models.Model):
                     'invoice_date_due': self.start,
                     'invoice_payment_term_id': False 
                 })
-                invoice_url = f"/inv/{invoice.id}"
 
+        invoice_url = f"/inv/{dp_invoice.id}"
         base_url = config.get("base_url", "https://hairbyning.com")
-        uri = f"{base_url}/{invoice_url}"
+        uri = f"{base_url}{invoice_url}"
 
         # 4. Link it back to the booking
         self.sale_order_id = order.id
@@ -338,11 +338,23 @@ class CalendarEvent(models.Model):
 
         return True
 
-
     @api.model
     def get_attribute_name(self, appointment_type_id):
         appointment = self.env['appointment.type'].sudo().browse(appointment_type_id)
         return appointment.product_id.product_tmpl_id.attribute_line_ids.display_name
+
+    def calculate_deposit_amount(self):
+        self.ensure_one()
+ 
+        dep_amount = 0.0
+        for booking_line in self.booking_line_ids:
+            if booking_line.product_variant_id.lst_price > 500:
+                dep_amount += 300
+            else:
+                dep_amount += 150
+
+        return dep_amount
+            
 
     def _set_event_name(self, values):
         appointment_type = self.env['appointment.type'].browse(values['appointment_type_id'])

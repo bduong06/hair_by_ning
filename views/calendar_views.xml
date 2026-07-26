@@ -22,6 +22,10 @@
                         context="{'form_view_ref': 'base.view_partner_simple_form'}"
                         class="oe_inline o_required_modifier o_field_highlight"  required="1" colspan="2"/>
             </xpath>
+            <xpath expr="//field[@name='resource_ids']" position="replace">
+                <field name="resource_ids" string="Resources" options="{'no_create': True}" invisible="1"
+                       domain="[('appointment_type_ids', 'in', appointment_type_id)]" widget="many2many_tags"/>
+            </xpath>
             <xpath expr="//div[hasclass('oe_title')]" position="attributes">
                 <attribute name="invisible">1</attribute>
             </xpath>
@@ -45,30 +49,8 @@
                     </div>
                 </group>
                 <div invisible="not sale_order_id">
-                    <field name="invoice_ids"
-                            options="{'no_create': True, 
-                                'currency_field': 'currency_id'
-                            }"
-                            context="{
-                                'default_move_type': context.get('default_move_type'),
-                                'default_display_type': 'product',
-                            }" readonly="0">
-                            <list>
-                                <field name="currency_id" column_invisible="1"/>
-                                <field name="name" string="Number"/>
-                                <field name="amount_total_in_currency_signed" string="Total"/>
-                                <field name="amount_residual_signed" string="Amount Due"/>
-                                <field name="status_in_payment"
-                                    string="Status"
-                                    widget="badge"
-                                    decoration-info="state == 'draft'"
-                                    decoration-danger="payment_state == 'not_paid' and invoice_date_due &lt; context_today().strftime('%Y-%m-%d')"
-                                    decoration-warning="payment_state in ('partial', 'in_payment')"
-                                    decoration-success="payment_state in ('paid', 'reversed')"
-                                    invisible="payment_state == 'invoicing_legacy' or move_type == 'entry'"
-                                />
-                            </list>
-                        </field>
+                    <field name="invoice_ids" quickEditMode="1"
+                           force_editable="1" context="{'quickEditMode': 'on' }"/>
                 </div>
             </xpath>
         </field>
@@ -214,5 +196,15 @@
             </xpath>
         </field>
     </record>
+    <template id="hair_by_ning.page_404" name="Page Not Found">
+            <div class="o_not_editable bg-100 pt40">
+                <div class="container">
+                    <div class="alert alert-info text-center d-lg-flex justify-content-between align-items-center">
+                        <p class="m-lg-0 text-info">This page does not exist.</p>
+                    </div>
+                </div>
+                <hr/>
+            </div>
+    </template>
 
   </odoo>
