@@ -45,6 +45,13 @@ patch(AppointmentBookingGanttRenderer.prototype, {
             const globalStopDate = localStartOf(globalStop, interval, this.metaData);
 
             this.columnCount = diffColumn(globalStartDate, globalStopDate, interval, this.metaData);
+            const searchParams = {
+                globalStart: globalStartDate,
+                globalStop: globalStopDate,
+                startDate: localStartOf(startDate, interval, this.model.metaData),
+                stopDate: localStartOf(stopDate, interval, this.model.metaData)
+            }
+            this.model._buildMetaData(searchParams)
         } 
     },
     computeVisibleColumns() {
