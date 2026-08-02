@@ -3,4 +3,5 @@
 
 from . import appointment
 from . import shorturl
+from . import portal
 from . import main
