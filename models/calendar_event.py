@@ -299,6 +299,7 @@ class CalendarEvent(models.Model):
         
         for attendee in self.attendee_ids:
             attendee.send_appointment_confirmation(uri) #type: ignore
+            attendee.send_conversion_api_event() #type: ignore
 
         # Log to chatter so the admin sees it
         self.message_post(body=f"✅ Deposit Order {order.name} created.")
